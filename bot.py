@@ -96,6 +96,9 @@ async def on_message(message):
         elif message.content == "moth":
             await message.channel.send("https://media.discordapp.net/attachments/660725993886973967/665234015825035274/tumblr_inline_pigyc2pVCu1t2g1uk_500.gif")
 
+        elif message.content == "github":
+            await message.channel.send("https://github.com/kurpingspace2/my-son")
+
         elif message.content == "help":
             await message.channel.send("""PREFIX: {0} or ping
 statelaws
@@ -106,11 +109,12 @@ hug
 lamp
 moth
 help
+github
 speak        -    enables random speaking
 shutup      -    disables random speaking, still listens
-prefix        -    sets prefix, avaliable prefixes: `:;~-+=.,!$&^?`
-adminset  -    sets what role will be able to use the admin commands for the bot
-freq       -    sets the frequency of which the bot sends a message""".format(settings[1]))
+prefix        -    `-prefix <flag>` sets prefix, avaliable prefixes: `:;~-+=.,!$&^?`
+adminset  -    `-adminset <role>` sets what role will be able to use the admin commands for the bot
+freq           -    `-freq <number>` sets the frequency of which the bot sends a message""".format(settings[1]))
 
         elif message.content == "speak" and admin == True:
             changesetting(message, 0, True)
