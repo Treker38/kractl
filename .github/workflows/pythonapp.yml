@@ -35,4 +35,4 @@ jobs:
     - name: Test with pytest
       run: |
         pip install pytest
-        pytest bot.py
+        pytest bot.py -v
