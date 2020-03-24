@@ -12,7 +12,6 @@ with open("laws.txt") as lawlist:
 
 messages = ["God fucking damn it, {0}", "Fuck you, {0}", "Leave me alone, I swear to god. You're so fucking annoying and it pisses me off, {0}", "FUCK OFF! {0}", "Pleeease bother someone else oh my fucking god, {0}", "I hope you actually fucking die, {0}"]
 
-@client.event
 async def think(message):
     with open("{0}-think.txt".format(message.guild.id)) as phraselist:
         phrases = [line for line in phraselist.readlines()]
@@ -33,13 +32,12 @@ async def on_ready():
 @client.event
 async def on_guild_join(guild):
     with open("{0}-settings.txt".format(guild.id), "w") as file:
-        file.write("True\n-\n{0}".format(guild.default_role))
+        file.write("True\n-\n{0}\n12".format(guild.default_role))
     with open("{0}-think.txt".format(guild.id), "w") as file:
         file.write("Hi!")
     print("Joined new server, and created files!")
     await guild.system_channel.send("Hi, i'm {0}! Please use -adminset to set the admin role and -prefix to change my prefix! Additionally, you can mention me or use the prefix to start commands! Use {0} help or -help for more info.".format(client.user.mention))
 
-#add another command, to set the talking frequency. and also talking channel
 @client.event
 async def on_message(message):
     global laws
@@ -47,21 +45,22 @@ async def on_message(message):
     if message.author == client.user:
         return
     
-    #checking settings every time a message is sent
     with open("{0}-settings.txt".format(message.guild.id)) as file:
         settings = file.readlines()
     settings = [item.strip() for item in settings]
-    if message.guild.get_role(settings[2]) in message.author.roles:
+    settings[3] = int(settings[3])
+    if message.author.top_role >= message.guild.get_role(int(settings[2])):
         admin = True
     else:
         admin = False
     
     if message.content.startswith(settings[1]) or message.content.startswith("<@!688504480366329995>"):
         message.content = message.content[1:]
-        if message.content.startswith("@!688504480366329995>"): #removing the rest of the ping, if it's not a prefix
+        if message.content.startswith("@!688504480366329995>"):
             message.content = message.content.replace("@!688504480366329995>", "")
             message.content = message.content.strip()
         message.content = message.content.lower()
+        
         if message.content == "statelaws":
             for law in range(len(laws)):
                 await message.channel.send("{0}: {1}".format(law, laws[law]))
@@ -110,7 +109,8 @@ help
 speak        -    enables random speaking
 shutup      -    disables random speaking, still listens
 prefix        -    sets prefix, avaliable prefixes: `:;~-+=.,!$&^?`
-adminset  -    sets what role will be able to use the admin commands for the bot""".format(settings[1]))
+adminset  -    sets what role will be able to use the admin commands for the bot
+freq       -    sets the frequency of which the bot sends a message""".format(settings[1]))
 
         elif message.content == "speak" and admin == True:
             changesetting(message, 0, True)
@@ -142,6 +142,22 @@ adminset  -    sets what role will be able to use the admin commands for the bot
                 changesetting(message, 2, message.content)
                 await message.channel.send("Admin role set to: {0}".format(message.guild.get_role(message.content).mention))
                 
+        elif message.content.startswith("freq ") and admin == True:
+            message.content = message.content.replace("freq ", "")
+            if message.content == "?":
+                await message.channel.send("Frequency: 1/{0}".format(settings[3]))
+                return
+            try:
+                freq = int(message.content)
+            except ValueError:
+                await message.channel.send("Please input an integer!")
+                return
+            if freq >= 10 and freq <= 40:
+                changesetting(message, 3, freq)
+                await message.channel.send("Frequency set to 1/{0}!".format(freq))
+            else:
+                await message.channel.send("Please input a number between 10 and 40!")
+                
         elif message.content == "speak" or message.content == "shutup" or message.content.startswith("prefix ") or message.content.startswith("adminset ") or message.content.startswith("freq ") and admin == False:
             await message.channel.send("Invalid permissions!")
         else:
@@ -156,7 +172,7 @@ adminset  -    sets what role will be able to use the admin commands for the bot
                 
             if message.attachments != []:
                 message.content = message.content+" "+message.attachments[0].url
-                message.content = message.content.strip() #incase there is no text
+                message.content = message.content.strip()
                 
             if message.content == "" or message.content == "** **" or message.content == "*** ***":
                 message.content = "_ _"
@@ -171,7 +187,7 @@ adminset  -    sets what role will be able to use the admin commands for the bot
             
             phrases.append(message.content)
             if len(phrases) >= 40:
-                while len(phrases) > 40: #just incase
+                while len(phrases) > 40:
                     phrases.pop(0)
                     
             with open("{0}-think.txt".format(message.guild.id), "w") as phraselist:
@@ -181,7 +197,7 @@ adminset  -    sets what role will be able to use the admin commands for the bot
         phrases = []
         print("New phrase added!", message.content)
 
-    if settings[0] == "True" and random.randint(1,12) == 12:
+    if settings[0] == "True" and random.randint(1, settings[3]) == settings[3]:
         await think(message)
 
-#client.run('insert the bot token here')
+client.run('insert the bot token here')
