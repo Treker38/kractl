@@ -183,4 +183,4 @@ adminset  -    sets what role will be able to use the admin commands for the bot
     if settings[0] == "True" and random.randint(1,12) == 12:
         await think(message)
 
-client.run('insert the bot token here')
+#client.run('insert the bot token here')
