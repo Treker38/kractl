@@ -18,6 +18,13 @@ async def think(message):
     await message.channel.send(emoji.emojize(random.choice(phrases)))
     phrases = []
 
+def changesetting(message, line, contents):
+    with open("{0}-settings.txt".format(message.guild.id)) as file:
+        data = file.readlines()
+    data[line] = str(contents)+"\n"
+    with open("{0}-settings.txt".format(message.guild.id), "w") as file:
+        file.writelines(data)
+        
 @client.event
 async def on_ready():
     print('Here we go again {0.user}'.format(client))
@@ -25,25 +32,30 @@ async def on_ready():
 @client.event
 async def on_guild_join(guild):
     with open("{0}-settings.txt".format(guild.id), "w") as file:
-        file.write("True\n-")
+        file.write("True\n-\n{0}".format(guild.default_role))
     with open("{0}-think.txt".format(guild.id), "w") as file:
         file.write("Hi!")
     print("Joined new server, and created files!")
     await guild.system_channel.send("Hi, i'm {0}! Please use -adminset to set the admin role and -prefix to change my prefix! Additionally, you can mention me or use the prefix to start commands! Use {0} help or -help for more info.".format(client.user.mention))
 
+#add another command, to set the talking frequency. and also talking channel
 @client.event
 async def on_message(message):
     global laws
+
+    if message.author == client.user:
+        return
     
     #checking settings every time a message is sent
     with open("{0}-settings.txt".format(message.guild.id)) as file:
         settings = file.readlines()
     settings = [item.strip() for item in settings]
-    talk = settings[0]
-    prefix = settings[1]
-    if message.author == client.user:
-        return
-    elif message.content.startswith(prefix) or message.content.startswith("<@!688504480366329995>"):
+    if message.guild.get_role(settings[2]) in message.author.roles:
+        admin = True
+    else:
+        admin = False
+    
+    if message.content.startswith(settings[1]) or message.content.startswith("<@!688504480366329995>"):
         message.content = message.content[1:]
         if message.content.startswith("@!688504480366329995>"): #removing the rest of the ping, if it's not a prefix
             message.content = message.content.replace("@!688504480366329995>", "")
@@ -88,37 +100,49 @@ async def on_message(message):
             await message.channel.send("""PREFIX: {0} or ping
 statelaws
 addlaw
-purge     -    purges lawset
+purge        -    purges lawset
 hi
 hug
 lamp
 moth
-speak     -    enables random speaking
-shutup   -    disables random speaking, still listens
 help
-prefix     -    sets prefix, avaliable prefixes: `:;~-+=.,!$&^?`""".format(prefix))
+speak        -    enables random speaking
+shutup      -    disables random speaking, still listens
+prefix        -    sets prefix, avaliable prefixes: `:;~-+=.,!$&^?`
+adminset  -    sets what role will be able to use the admin commands for the bot""".format(settings[1]))
 
-        elif message.content == "speak":
-            talk = "True"
-            with open("{0}-settings.txt".format(message.guild.id), "w") as file:
-                file.write("True\n{0}".format(prefix))
+        elif message.content == "speak" and admin == True:
+            changesetting(message, 0, True)
             await think(message)
 
-        elif message.content == "shutup":
-            talk = "False"
-            with open("{0}-settings.txt".format(message.guild.id), "w") as file:
-                file.write("False\n{0}".format(prefix))
+        elif message.content == "shutup" and admin == True:
+            changesetting(message, 0 , False)
             await message.channel.send("Okay... :(")
 
-        elif message.content.startswith("prefix "):
+        elif message.content.startswith("prefix ") and admin == True:
             message.content = message.content.replace("prefix ", "")
             if len(message.content) == 1 and message.content in ":;~-+=.,!$&^?":
-                prefix = message.content
-                with open("{0}-settings.txt".format(message.guild.id), "w") as file:
-                    file.write("{0}\n{1}".format(talk, prefix))
-                await message.channel.send("Prefix set to: {0}".format(prefix))
+                changesetting(message, 1, message.content)
+                await message.channel.send("Prefix set to: {0}".format(message.content))
             else:
                 await message.channel.send("Invalid prefix! Avaliable prefixes: `:;~-+=.,!$&^?`")
+
+        elif message.content.startswith("adminset ") and message.author.id == message.guild.owner_id:
+            message.content = message.content.replace("adminset ", "").strip("<@&>")
+            try:
+                message.content = int(message.content)
+            except ValueError:
+                await message.channel.send("Please give a valid role!")
+                return
+            if message.guild.get_role(message.content) == None:
+                
+                return
+            else:
+                changesetting(message, 2, message.content)
+                await message.channel.send("Admin role set to: {0}".format(message.guild.get_role(message.content).mention))
+                
+        elif message.content == "speak" or message.content == "shutup" or message.content.startswith("prefix ") or message.content.startswith("adminset ") or message.content.startswith("freq ") and admin == False:
+            await message.channel.send("Invalid permissions!")
         else:
             await message.channel.send("Invalid command!")
         return
@@ -126,7 +150,6 @@ prefix     -    sets prefix, avaliable prefixes: `:;~-+=.,!$&^?`""".format(prefi
     if random.randint(1,10) == 10:
         with open("{0}-think.txt".format(message.guild.id)) as file:
             phrases = [line.strip() for line in file.readlines()]
-            print(phrases)
             if "<@" in message.content:
                 message.content = re.sub("<[^>]+>", "", message.content)
                 
@@ -157,7 +180,7 @@ prefix     -    sets prefix, avaliable prefixes: `:;~-+=.,!$&^?`""".format(prefi
         phrases = []
         print("New phrase added!", message.content)
 
-    if talk == "True" and random.randint(1,12) == 12:
+    if settings[0] == "True" and random.randint(1,12) == 12:
         await think(message)
 
 client.run('insert the bot token here')
