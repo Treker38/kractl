@@ -204,4 +204,4 @@ freq           -    `-freq <number>` sets the frequency of which the bot sends a
     if settings[0] == "True" and random.randint(1, settings[3]) == settings[3]:
         await think(message)
 
-client.run('insert the bot token here')
+#client.run('uncomment and insert the bot token here')
