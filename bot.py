@@ -12,6 +12,7 @@ with open("laws.txt") as lawlist:
 
 messages = ["God fucking damn it, {0}", "Fuck you, {0}", "Leave me alone, I swear to god. You're so fucking annoying and it pisses me off, {0}", "FUCK OFF! {0}", "Pleeease bother someone else oh my fucking god, {0}", "I hope you actually fucking die, {0}"]
 
+@client.event
 async def think(message):
     with open("{0}-think.txt".format(message.guild.id)) as phraselist:
         phrases = [line for line in phraselist.readlines()]
