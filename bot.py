@@ -32,7 +32,7 @@ async def on_ready():
 @client.event
 async def on_guild_join(guild):
     with open("{0}-settings.txt".format(guild.id), "w") as file:
-        file.write("True\n-\n{0.default_role}\n12\n{0.system_channel}".format(guild))
+        file.write("True\n-\n{0.default_role.id}\n12\n{0.system_channel.id}".format(guild))
     with open("{0}-think.txt".format(guild.id), "w") as file:
         file.write("Hi!")
     print("Joined new server, and created files!")
