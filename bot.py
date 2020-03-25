@@ -32,7 +32,7 @@ async def on_ready():
 @client.event
 async def on_guild_join(guild):
     with open("{0}-settings.txt".format(guild.id), "w") as file:
-        file.write("True\n-\n{0}\n12".format(guild.default_role))
+        file.write("True\n-\n{0.default_role}\n12\n{0.system_channel}".format(guild))
     with open("{0}-think.txt".format(guild.id), "w") as file:
         file.write("Hi!")
     print("Joined new server, and created files!")
@@ -49,6 +49,8 @@ async def on_message(message):
         settings = file.readlines()
     settings = [item.strip() for item in settings]
     settings[3] = int(settings[3])
+    whitelist = settings[4].strip("[]").split(", ")
+    whitelist = [int(channel) for channel in whitelist]
     if message.author.top_role >= message.guild.get_role(int(settings[2])):
         admin = True
     else:
@@ -96,25 +98,8 @@ async def on_message(message):
         elif message.content == "moth":
             await message.channel.send("https://media.discordapp.net/attachments/660725993886973967/665234015825035274/tumblr_inline_pigyc2pVCu1t2g1uk_500.gif")
 
-        elif message.content == "github":
-            await message.channel.send("https://github.com/kurpingspace2/my-son")
-
         elif message.content == "help":
-            await message.channel.send("""PREFIX: {0} or ping
-statelaws
-addlaw
-purge        -    purges lawset
-hi
-hug
-lamp
-moth
-help
-github
-speak        -    enables random speaking
-shutup      -    disables random speaking, still listens
-prefix        -    `-prefix <flag>` sets prefix, avaliable prefixes: `:;~-+=.,!$&^?`
-adminset  -    `-adminset <role>` sets what role will be able to use the admin commands for the bot
-freq           -    `-freq <number>` sets the frequency of which the bot sends a message""".format(settings[1]))
+            await message.channel.send("PREFIX: {0} or ping\nCommands are listed here: https://github.com/kurpingspace2/my-son/blob/master/README.md".format(settings[1]))
 
         elif message.content == "speak" and admin == True:
             changesetting(message, 0, True)
@@ -140,11 +125,10 @@ freq           -    `-freq <number>` sets the frequency of which the bot sends a
                 await message.channel.send("Please give a valid role!")
                 return
             if message.guild.get_role(message.content) == None:
-                
+                await message.channel.send("This role does not exist!")
                 return
-            else:
-                changesetting(message, 2, message.content)
-                await message.channel.send("Admin role set to: {0}".format(message.guild.get_role(message.content).mention))
+            changesetting(message, 2, message.content)
+            await message.channel.send("Admin role set to: {0}".format(message.guild.get_role(message.content).mention))
                 
         elif message.content.startswith("freq ") and admin == True:
             message.content = message.content.replace("freq ", "")
@@ -161,47 +145,80 @@ freq           -    `-freq <number>` sets the frequency of which the bot sends a
                 await message.channel.send("Frequency set to 1/{0}!".format(freq))
             else:
                 await message.channel.send("Please input a number between 10 and 40!")
+
+        elif message.content.startswith("talkchannel ") and admin == True:
+            message.content = message.content.replace("talkchannel ", "")
+            if message.content.startswith("a "):
+                message.content = message.content.replace("a ", "").strip("<#>")
+                try:
+                    message.content = int(message.content)
+                except ValueError:
+                    await message.channel.send("Please give a valid channel!")
+                if message.guild.get_channel(message.content) == None:
+                    await message.channel.send("This channel does not exist!")
+                elif message.content in whitelist:
+                    await message.channel.send("This channel is already whitelisted!")
+                else:
+                    whitelist.append(message.content)
+                    changesetting(message, 4, whitelist)
+                    await message.channel.send("Added channel to whitelist!")
+            elif message.content.startswith("rm "):
+                try:
+                    message.content = int(message.content.replace("rm ", "").strip("<#>"))
+                except ValueError:
+                    await message.channel.send("Please give a valid channel!")
+                if message.content in whitelist:
+                    whitelist.remove(message.content)
+                    changesetting(message, 4, whitelist)
+                    await message.channel.send("Channel removed!")
+                else:
+                    await message.channel.send("Could not find that in the whitelist!")
+            elif message.content.startswith("?"):
+                await message.channel.send("Whitelisted channels: "+str(" ".join([message.guild.get_channel(textchannel).mention for textchannel in whitelist])))
+            else:
+                await message.channel.send("Unknown flag!")
                 
-        elif message.content == "speak" or message.content == "shutup" or message.content.startswith("prefix ") or message.content.startswith("adminset ") or message.content.startswith("freq ") and admin == False:
+        elif message.content == "speak" or message.content == "shutup" or message.content.startswith("talkchannel ") or message.content.startswith("prefix ") or message.content.startswith("adminset ") or message.content.startswith("freq ") and admin == False:
             await message.channel.send("Invalid permissions!")
         else:
             await message.channel.send("Invalid command!")
         return
     
-    if random.randint(1,10) == 10:
-        with open("{0}-think.txt".format(message.guild.id)) as file:
-            phrases = [line.strip() for line in file.readlines()]
-            if "<@" in message.content:
-                message.content = re.sub("<[^>]+>", "", message.content)
-                
-            if message.attachments != []:
-                message.content = message.content+" "+message.attachments[0].url
-                message.content = message.content.strip()
-                
-            if message.content == "" or message.content == "** **" or message.content == "*** ***":
-                message.content = "_ _"
-                
-            elif "\n" in message.content:
-                message.content = message.content.replace("\n", " ")
-                
-            message.content = emoji.demojize(message.content.strip())
-            if message.content in phrases:
-                print(message.content, " is already in phrases!")
-                return
-            
-            phrases.append(message.content)
-            if len(phrases) >= 40:
-                while len(phrases) > 40:
-                    phrases.pop(0)
+    if message.channel.id in whitelist:
+        if random.randint(1,10) == 10:
+            with open("{0}-think.txt".format(message.guild.id)) as file:
+                phrases = [line.strip() for line in file.readlines()]
+                if "<@" in message.content:
+                    message.content = re.sub("<[^>]+>", "", message.content)
                     
-            with open("{0}-think.txt".format(message.guild.id), "w") as phraselist:
-                for phrase in phrases:
-                    phraselist.write(phrase+"\n")
+                if message.attachments != []:
+                    message.content = message.content+" "+message.attachments[0].url
+                    message.content = message.content.strip()
+                    
+                if message.content == "" or message.content == "** **" or message.content == "*** ***":
+                    message.content = "_ _"
+                    
+                elif "\n" in message.content:
+                    message.content = message.content.replace("\n", " ")
+                    
+                message.content = emoji.demojize(message.content.strip())
+                if message.content in phrases:
+                    print(message.content, " is already in phrases!")
+                    return
+                
+                phrases.append(message.content)
+                if len(phrases) >= 40:
+                    while len(phrases) > 40:
+                        phrases.pop(0)
+                        
+                with open("{0}-think.txt".format(message.guild.id), "w") as phraselist:
+                    for phrase in phrases:
+                        phraselist.write(phrase+"\n")
 
-        phrases = []
-        print("New phrase added!", message.content)
+            phrases = []
+            print("New phrase added!", message.content)
 
-    if settings[0] == "True" and random.randint(1, settings[3]) == settings[3]:
-        await think(message)
+        if settings[0] == "True" and random.randint(1, settings[3]) == settings[3]:
+            await think(message)
 
-#client.run('uncomment and insert the bot token here')
+#client.run('uncomment and insert bot token here')
