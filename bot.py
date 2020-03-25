@@ -185,6 +185,8 @@ async def on_message(message):
         return
     
     if message.channel.id in whitelist:
+        if message.content.startswith((":", ";", "~", "-", "+", "=", ".", ",", "!", "$", "&", "^", "?")):
+            return
         if random.randint(1,10) == 10:
             with open("{0}-think.txt".format(message.guild.id)) as file:
                 phrases = [line.strip() for line in file.readlines()]
@@ -221,4 +223,4 @@ async def on_message(message):
         if settings[0] == "True" and random.randint(1, settings[3]) == settings[3]:
             await think(message)
 
-#client.run('uncomment and insert bot token here')
+#client.run('insert bot token here')
