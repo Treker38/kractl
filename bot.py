@@ -56,20 +56,13 @@ async def on_message(message):
     else:
         admin = False
     
-    if message.content.startswith(settings[1]) or message.content.startswith("<@!688504480366329995>"):
+    if message.content.startswith(settings[1]) or message.content.startswith("<@!{0}>".format(client.user.id)):
         message.content = message.content[1:]
-        if message.content.startswith("@!688504480366329995>"):
-            message.content = message.content.replace("@!688504480366329995>", "")
+        if message.content.startswith("@!{0}>".format(client.user.id)):
+            message.content = message.content.replace("@!{0}>".format(client.user.id), "")
             message.content = message.content.strip()
-        message.content = message.content.lower()
         
-        if message.content == "statelaws":
-            for law in range(len(laws)):
-                await message.channel.send("{0}: {1}".format(law, laws[law]))
-            if len(laws) == 0:
-                await message.channel.send("No laws!")
-                
-        elif message.content.startswith("addlaw "):
+        if message.content.lower().startswith("addlaw "):
             if len(laws) >= 5:
                 await message.channel.send("Maximum laws reached!")
                 return
@@ -79,6 +72,13 @@ async def on_message(message):
                 for law in range(len(laws)):
                     lawlist.write(str(laws[law])+"\n")
             await message.channel.send("Law added!")
+        message.content = message.content.lower()
+
+        if message.content == "statelaws":
+            for law in range(len(laws)):
+                await message.channel.send("{0}: {1}".format(law, laws[law]))
+            if len(laws) == 0:
+                await message.channel.send("No laws!")
 
         elif message.content == "purge":
             laws = []
