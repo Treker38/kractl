@@ -44,7 +44,6 @@ setting = Server.guild
 async def globally_block_dms(ctx):
     return ctx.guild is not None
 
-@bot.check
 async def admin(ctx):
     if ctx.author.top_role >= ctx.guild.get_role(setting(ctx.guild.id).adminRole):
         return True
