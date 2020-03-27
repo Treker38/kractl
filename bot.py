@@ -116,6 +116,13 @@ async def on_message(message):
                 phrases = [line for line in phraselist.readlines()]
             await message.channel.send(emoji.emojize(random.choice(phrases)))
 
+@bot.event
+async def on_command_error(ctx, err):
+    if isinstance(err, commands.CheckFailure):
+        await ctx.send("Access Denied") 
+    elif isinstance(err, commands.CommandNotFound):
+        await ctx.send("Command not found! Try `{0}help` for a list of proper commands.".format(setting(ctx.guild.id).prefix))
+
 @bot.command()
 async def hi(ctx):
     await ctx.send(random.choice(messages).format(ctx.author.mention))
