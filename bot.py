@@ -70,7 +70,7 @@ async def on_guild_join(guild):
     with open("servers.txt", "a") as file:
         file.write("\n{0}".format(guild.id))
     print("Joined new server, and created files!")
-    await guild.system_channel.send("Hi, i'm {0}! Please use -adminset to set the admin role and -prefix to change my prefix! Additionally, you can mention me or use the prefix to start commands! Use {0} help or -help for more info.".format(client.user.mention))
+    await guild.system_channel.send("Hi, i'm {0}! Please use -adminset to set the admin role and -prefix to change my prefix! Additionally, you can mention me or use the prefix to start commands! Use {0} help or -help for more info.".format(bot.user.mention))
 
 @bot.event
 async def on_message(message):
