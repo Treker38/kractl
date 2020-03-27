@@ -1,9 +1,6 @@
 Starts commands with the prefix, or ping the bot first. Using prefix after pinging the bot does not work. (Create an issue if this is annoying)
 
 ## Normal commands:
-* statelaws     - states the laws the bot has, they are global which means you can read laws that were made on other servers.
-* addlaw        - adds a law to the lawset                                                  = `addlaw <message>`
-* purge         - purges the lawset
 * hi            - get greeted by the bot
 * hug           - hug the bot
 * lamp          - shows you moths around a lamp
