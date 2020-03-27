@@ -1,192 +1,86 @@
+print("Inizializing!")
+
 import discord
+from discord.ext import commands
 import random
 import re
 import emoji
 
-client = discord.Client()
-
-laws = []
-with open("laws.txt") as lawlist:
-    for law in lawlist:
-        laws.append(law.strip())
-
 messages = ["God fucking damn it, {0}", "Fuck you, {0}", "Leave me alone, I swear to god. You're so fucking annoying and it pisses me off, {0}", "FUCK OFF! {0}", "Pleeease bother someone else oh my fucking god, {0}", "I hope you actually fucking die, {0}"]
+guilds = []
 
-async def think(message):
-    with open("{0}-think.txt".format(message.guild.id)) as phraselist:
-        phrases = [line for line in phraselist.readlines()]
-    await message.channel.send(emoji.emojize(random.choice(phrases)))
-    phrases = []
-
-def changesetting(message, line, contents):
-    with open("{0}-settings.txt".format(message.guild.id)) as file:
+def changesetting(ctx, line, contents):
+    with open("{0}-settings.txt".format(ctx.guild.id)) as file:
         data = file.readlines()
     data[line] = str(contents)+"\n"
-    with open("{0}-settings.txt".format(message.guild.id), "w") as file:
+    with open("{0}-settings.txt".format(ctx.guild.id), "w") as file:
         file.writelines(data)
-        
-@client.event
-async def on_ready():
-    print('Here we go again {0.user}'.format(client))
 
-@client.event
+class Server:
+    def __init__(self, t, p, a, f, w):
+        self.talk = t
+        self.prefix = p
+        self.adminRole = a
+        self.freq = f
+        self.whitelisted = w
+
+    def guild(guildId):
+        for guild in guilds:
+            if guildId in guild:
+                return guild[guildId]
+        return None
+
+async def determine_prefix(bot, msg):
+    if msg.guild:
+        return setting(msg.guild.id).prefix
+    else:
+        return "-"
+    
+bot = commands.Bot(command_prefix=determine_prefix)
+bot.remove_command('help')
+setting = Server.guild
+
+@bot.check
+async def globally_block_dms(ctx):
+    return ctx.guild is not None
+
+@bot.check
+async def admin(ctx):
+    if ctx.author.top_role >= ctx.guild.get_role(setting(ctx.guild.id).adminRole):
+        return True
+    else:
+        return False
+
+@bot.event
+async def on_ready():
+    with open("servers.txt") as servers:
+        servers = [line.strip()+"-settings.txt" for line in servers.readlines()]
+    for guild in servers:
+        with open(guild) as settings:
+            settings = settings.readlines()
+        settings = [item.strip() for item in settings]
+        guilds.append({ int(guild.strip("-settings.txt")): Server(bool(int(settings[0])), settings[1], int(settings[2]), int(settings[3]), [int(setting) for setting in settings[4].strip("[]").split(", ")])})
+    print('Here we go again {0.user}'.format(bot))
+
+@bot.event
 async def on_guild_join(guild):
     with open("{0}-settings.txt".format(guild.id), "w") as file:
-        file.write("True\n-\n{0.default_role.id}\n12\n{0.system_channel.id}".format(guild))
+        file.write("1\n-\n{0.default_role.id}\n12\n{0.system_channel.id}".format(guild))
     with open("{0}-think.txt".format(guild.id), "w") as file:
         file.write("Hi!")
+    with open("servers.txt", "a") as file:
+        file.write("\n{0}".format(guild.id))
     print("Joined new server, and created files!")
     await guild.system_channel.send("Hi, i'm {0}! Please use -adminset to set the admin role and -prefix to change my prefix! Additionally, you can mention me or use the prefix to start commands! Use {0} help or -help for more info.".format(client.user.mention))
 
-@client.event
+@bot.event
 async def on_message(message):
-    global laws
-
-    if message.author == client.user:
+    if message.author == bot.user:
         return
-    
-    with open("{0}-settings.txt".format(message.guild.id)) as file:
-        settings = file.readlines()
-    settings = [item.strip() for item in settings]
-    settings[3] = int(settings[3])
-    whitelist = settings[4].strip("[]").split(", ")
-    whitelist = [int(channel) for channel in whitelist]
-    if message.author.top_role >= message.guild.get_role(int(settings[2])):
-        admin = True
-    else:
-        admin = False
-    
-    if message.content.startswith(settings[1]) or message.content.startswith("<@!{0}>".format(client.user.id)):
-        message.content = message.content[1:]
-        if message.content.startswith("@!{0}>".format(client.user.id)):
-            message.content = message.content.replace("@!{0}>".format(client.user.id), "")
-            message.content = message.content.strip()
-        
-        if message.content.lower().startswith("addlaw "):
-            if len(laws) >= 5:
-                await message.channel.send("Maximum laws reached!")
-                return
-            message.content = message.content.replace("addlaw ", "")
-            laws.append(message.content)
-            with open("laws.txt", "w") as lawlist:
-                for law in range(len(laws)):
-                    lawlist.write(str(laws[law])+"\n")
-            await message.channel.send("Law added!")
-        message.content = message.content.lower()
-
-        if message.content == "statelaws":
-            for law in range(len(laws)):
-                await message.channel.send("{0}: {1}".format(law, laws[law]))
-            if len(laws) == 0:
-                await message.channel.send("No laws!")
-
-        elif message.content == "purge":
-            laws = []
-            with open("laws.txt", "w") as lawlist:
-                lawlist.write("")
-            await message.channel.send("Laws purged!")
-
-        elif message.content == "hi":
-            await message.channel.send(random.choice(messages).format(message.author.mention))
-
-        elif message.content == "hug":
-            await message.channel.send(":flushed:")
-
-        elif message.content == "lamp":
-            await message.channel.send("Lämp https://tenor.com/view/mothpit-gif-4889422")
-
-        elif message.content == "moth":
-            await message.channel.send("https://media.discordapp.net/attachments/660725993886973967/665234015825035274/tumblr_inline_pigyc2pVCu1t2g1uk_500.gif")
-
-        elif message.content == "help":
-            await message.channel.send("PREFIX: {0} or ping\nCommands are listed here: https://github.com/kurpingspace2/my-son/blob/master/README.md".format(settings[1]))
-
-        elif message.content == "speak" and admin == True:
-            changesetting(message, 0, True)
-            await think(message)
-
-        elif message.content == "shutup" and admin == True:
-            changesetting(message, 0 , False)
-            await message.channel.send("Okay... :(")
-
-        elif message.content.startswith("prefix ") and admin == True:
-            message.content = message.content.replace("prefix ", "")
-            if len(message.content) == 1 and message.content in ":;~-+=.,!$&^?":
-                changesetting(message, 1, message.content)
-                await message.channel.send("Prefix set to: {0}".format(message.content))
-            else:
-                await message.channel.send("Invalid prefix! Avaliable prefixes: `:;~-+=.,!$&^?`")
-
-        elif message.content.startswith("adminset ") and message.author.id == message.guild.owner_id:
-            message.content = message.content.replace("adminset ", "").strip("<@&>")
-            try:
-                message.content = int(message.content)
-            except ValueError:
-                await message.channel.send("Please give a valid role!")
-                return
-            if message.guild.get_role(message.content) == None:
-                await message.channel.send("This role does not exist!")
-                return
-            changesetting(message, 2, message.content)
-            await message.channel.send("Admin role set to: {0}".format(message.guild.get_role(message.content).mention))
-                
-        elif message.content.startswith("freq ") and admin == True:
-            message.content = message.content.replace("freq ", "")
-            if message.content == "?":
-                await message.channel.send("Frequency: 1/{0}".format(settings[3]))
-                return
-            try:
-                freq = int(message.content)
-            except ValueError:
-                await message.channel.send("Please input an integer!")
-                return
-            if freq >= 10 and freq <= 40:
-                changesetting(message, 3, freq)
-                await message.channel.send("Frequency set to 1/{0}!".format(freq))
-            else:
-                await message.channel.send("Please input a number between 10 and 40!")
-
-        elif message.content.startswith("talkchannel ") and admin == True:
-            message.content = message.content.replace("talkchannel ", "")
-            if message.content.startswith("a "):
-                message.content = message.content.replace("a ", "").strip("<#>")
-                try:
-                    message.content = int(message.content)
-                except ValueError:
-                    await message.channel.send("Please give a valid channel!")
-                if message.guild.get_channel(message.content) == None:
-                    await message.channel.send("This channel does not exist!")
-                elif message.content in whitelist:
-                    await message.channel.send("This channel is already whitelisted!")
-                else:
-                    whitelist.append(message.content)
-                    changesetting(message, 4, whitelist)
-                    await message.channel.send("Added channel to whitelist!")
-            elif message.content.startswith("rm "):
-                try:
-                    message.content = int(message.content.replace("rm ", "").strip("<#>"))
-                except ValueError:
-                    await message.channel.send("Please give a valid channel!")
-                if message.content in whitelist:
-                    whitelist.remove(message.content)
-                    changesetting(message, 4, whitelist)
-                    await message.channel.send("Channel removed!")
-                else:
-                    await message.channel.send("Could not find that in the whitelist!")
-            elif message.content.startswith("?"):
-                await message.channel.send("Whitelisted channels: "+str(" ".join([message.guild.get_channel(textchannel).mention for textchannel in whitelist])))
-            else:
-                await message.channel.send("Unknown flag!")
-                
-        elif message.content == "speak" or message.content == "shutup" or message.content.startswith("talkchannel ") or message.content.startswith("prefix ") or message.content.startswith("adminset ") or message.content.startswith("freq ") and admin == False:
-            await message.channel.send("Invalid permissions!")
-        else:
-            await message.channel.send("Invalid command!")
-        return
-    
-    if message.channel.id in whitelist:
-        if message.content.startswith((":", ";", "~", "-", "+", "=", ".", ",", "!", "$", "&", "^", "?")):
+    if message.content.startswith((":", ";", "~", "-", "+", "=", ".", ",", "!", "$", "&", "^", "?")):
+            await bot.process_commands(message)
             return
+    if message.channel.id in setting(message.guild.id).whitelisted:
         if random.randint(1,10) == 10:
             with open("{0}-think.txt".format(message.guild.id)) as file:
                 phrases = [line.strip() for line in file.readlines()]
@@ -219,8 +113,126 @@ async def on_message(message):
 
             phrases = []
             print("New phrase added!", message.content)
+        if setting(message.guild.id).talk and random.randint(1, setting(message.guild.id).freq) == setting(message.guild.id).freq:
+            with open("{0}-think.txt".format(message.guild.id)) as phraselist:
+                phrases = [line for line in phraselist.readlines()]
+            await message.channel.send(emoji.emojize(random.choice(phrases)))
 
-        if settings[0] == "True" and random.randint(1, settings[3]) == settings[3]:
-            await think(message)
+@bot.command()
+async def hi(ctx):
+    await ctx.send(random.choice(messages).format(ctx.author.mention))
 
-#client.run('insert bot token here')
+@bot.command()
+async def hug(ctx):
+    await ctx.send(":flushed:")
+
+@bot.command()
+async def lamp(ctx):
+    await ctx.send("Lämp https://tenor.com/view/mothpit-gif-4889422")
+
+@bot.command()
+async def moth(ctx):
+    await ctx.send("https://media.discordapp.net/attachments/660725993886973967/665234015825035274/tumblr_inline_pigyc2pVCu1t2g1uk_500.gif")
+
+@bot.command()
+async def help(ctx):
+    await ctx.send("PREFIX: {0} or ping\nCommands are listed here: https://github.com/kurpingspace2/my-son/blob/master/README.md".format(setting(ctx.guild.id).prefix))
+
+@bot.command()
+@commands.check(admin)
+async def speak(ctx):
+    setting(ctx.guild.id).talk = True
+    changesetting(ctx, 0, 1)
+    with open("{0}-think.txt".format(ctx.guild.id)) as phraselist:
+        phrases = [line for line in phraselist.readlines()]
+    await ctx.send(emoji.emojize(random.choice(phrases)))
+
+@bot.command()
+@commands.check(admin)
+async def shutup(ctx):
+    setting(ctx.guild.id).talk = False
+    changesetting(ctx, 0, 0)
+    await ctx.send("Okay... :(")
+
+@bot.command()
+@commands.check(admin)
+async def prefix(ctx, newprefix):
+    if len(newprefix) == 1 and newprefix in ":;~-+=.,!$&^?":
+        setting(ctx.guild.id).prefix = newprefix
+        changesetting(ctx, 1, newprefix)
+        await ctx.send("Prefix set to: {0}".format(newprefix))
+    else:
+        await ctx.send("Invalid prefix! Avaliable prefixes: `:;~-+=.,!$&^?`")
+
+@bot.command()
+@commands.is_owner()
+async def adminset(ctx, role):
+    role = role.strip("<@&>")
+    try:
+        role = int(role)
+    except ValueError:
+        await ctx.send("Please give a valid role!")
+        return
+    if ctx.guild.get_role(role) == None:
+        await ctx.send("This role does not exist!")
+        return
+    setting(ctx.guild.id).adminRole = role
+    changesetting(ctx, 2, role)
+    await ctx.send("Admin role set to: {0}".format(ctx.guild.get_role(role).mention))
+
+@bot.command()
+@commands.check(admin) 
+async def freq(ctx, freq):
+    if freq == "?":
+        await ctx.send("Frequency: 1/{0}".format(setting(ctx.guild.id).freq))
+        return
+    try:
+        freq = int(freq)
+    except ValueError:
+        await ctx.send("Please input an integer!")
+        return
+    if freq >= 10 and freq <= 40:
+        setting(ctx.guild.id).freq = freq
+        changesetting(ctx, 3, freq)
+        await ctx.send("Frequency set to 1/{0}!".format(freq))
+    else:
+        await ctx.send("Please input a number between 10 and 40!")
+
+@bot.command()
+@commands.check(admin) 
+async def talkchannel(ctx, *args):
+    flag = args[0]
+    if flag == "?":
+        await ctx.send("Whitelisted channels: "+str(" ".join([ctx.guild.get_channel(textchannel).mention for textchannel in setting(ctx.guild.id).whitelisted])))
+        return
+    channel = args[1].strip("<#>")
+    if flag == "a":
+        try:
+            channel = int(channel)
+        except ValueError:
+            await ctx.send("Please give a valid channel!")
+        if ctx.guild.get_channel(channel) == None:
+            await ctx.send("This channel does not exist!")
+        elif channel in setting(ctx.guild.id).whitelisted:
+            await ctx.send("This channel is already whitelisted!")
+        else:
+            setting(ctx.guild.id).whitelisted.append(channel)
+            changesetting(ctx, 4, setting(ctx.guild.id).whitelisted)
+            await ctx.send("Added channel to whitelist!")
+    elif flag == "rm":
+        try:
+            channel = int(channel)
+        except ValueError:
+            await ctx.send("Please give a valid channel!")
+            return
+        try:
+            setting(ctx.guild.id).whitelisted.remove(channel)
+        except ValueError:
+            await ctx.send("Could not find that in the whitelist!")
+            return
+        changesetting(ctx, 4, setting(ctx.guild.id).whitelisted)
+        await ctx.send("Channel removed!")
+    else:
+        await ctx.send("Unknown flag!")
+
+bot.run() #insert the bot token there as str
