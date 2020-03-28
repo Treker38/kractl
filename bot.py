@@ -7,6 +7,7 @@ import random
 import re
 import emoji
 import asyncio
+import os
 
 messages = ["God fucking damn it, {0}", "Fuck you, {0}", "Leave me alone, I swear to god. You're so fucking annoying and it pisses me off, {0}", "FUCK OFF! {0}", "Pleeease bother someone else oh my fucking god, {0}", "I hope you actually fucking die, {0}"]
 guilds = {}
@@ -75,9 +76,24 @@ async def on_guild_join(guild):
         file.write("Hi!")
     with open("servers.txt", "a") as file:
         file.write("\n{0}".format(guild.id))
-    await guild.system_channel.send("Hi, i'm {0}! Please use -adminset to set the admin role and -prefix to change my prefix! Additionally, you can mention me or use the prefix to start commands! Use {0} help or -help for more info.".format(bot.user.mention))
+    await guild.system_channel.send("Hi, i'm {0}! Please use `-adminset` to set the admin role and `-prefix` to change my prefix! Additionally, you can mention me or use the prefix to start commands! Use {0} help or `-help` for more info.".format(bot.user.mention))
     guilds[guild.id] = Server(True, "-", guild.default_role.id, 12, [guild.system_channel.id], False, guild.system_channel.id)
-    print("Joined new server, and created files!")
+    print("[{0}] Joined server: '".format(datetime.now().time())+guild.name+"' and created files!")
+
+@bot.event
+async def on_guild_remove(guild):
+    os.remove("{0}-settings.txt".format(guild.id))
+    os.remove("{0}-think.txt".format(guild.id))
+    with open("servers.txt") as file:
+        servers = file.readlines()
+    servers = [int(item.strip()) for item in servers]
+    servers.remove(guild.id)
+    servers = ["\n"+str(item) for item in servers]
+    servers[0] = servers[0].strip()
+    with open("servers.txt", "w") as file:
+        file.writelines(servers)
+    print("[{0}] Left server '".format(datetime.now().time())+guild.name+"' ;(")
+
 
 @bot.event
 async def on_message(message):
@@ -111,9 +127,8 @@ async def on_message(message):
                     return
                 
                 phrases.append(message.content)
-                if len(phrases) >= 40:
-                    while len(phrases) > 40:
-                        phrases.pop(0)
+                while len(phrases) > 40:
+                    phrases.pop(0)
                         
                 with open("{0}-think.txt".format(message.guild.id), "w") as phraselist:
                     for phrase in phrases:
