@@ -2,9 +2,11 @@ print("Inizializing!")
 
 import discord
 from discord.ext import commands
+from datetime import datetime
 import random
 import re
 import emoji
+import asyncio
 
 messages = ["God fucking damn it, {0}", "Fuck you, {0}", "Leave me alone, I swear to god. You're so fucking annoying and it pisses me off, {0}", "FUCK OFF! {0}", "Pleeease bother someone else oh my fucking god, {0}", "I hope you actually fucking die, {0}"]
 guilds = {}
@@ -17,12 +19,14 @@ def changesetting(ctx, line, contents):
         file.writelines(data)
 
 class Server:
-    def __init__(self, t, p, a, f, w):
+    def __init__(self, t, prfx, arole, f, white, l, lch):
         self.talk = t
-        self.prefix = p
-        self.adminRole = a
+        self.prefix = prfx
+        self.adminRole = arole
         self.freq = f
-        self.whitelisted = w
+        self.whitelisted = white
+        self.log = l
+        self.lchannel = lch
 
 def setting(guildId):
     if guildId in guilds:
@@ -60,19 +64,19 @@ async def on_ready():
         with open(guild) as settings:
             settings = settings.readlines()
         settings = [item.strip() for item in settings]
-        guilds[int(guild.strip("-settings.txt"))] = Server(bool(int(settings[0])), settings[1], int(settings[2]), int(settings[3]), [int(setting) for setting in settings[4].strip("[]").split(", ")])
+        guilds[int(guild.strip("-settings.txt"))] = Server(bool(int(settings[0])), settings[1], int(settings[2]), int(settings[3]), [int(setting) for setting in settings[4].strip("[]").split(", ")], bool(int(settings[5])), int(settings[6]))
     print('Here we go again {0.user}'.format(bot))
 
 @bot.event
 async def on_guild_join(guild):
     with open("{0}-settings.txt".format(guild.id), "w") as file:
-        file.write("1\n-\n{0.default_role.id}\n12\n{0.system_channel.id}".format(guild))
+        file.write("1\n-\n{0}\n12\n{1}\n0\n{1}".format(guild.default_role.id, guild.system_channel.id))
     with open("{0}-think.txt".format(guild.id), "w") as file:
         file.write("Hi!")
     with open("servers.txt", "a") as file:
         file.write("\n{0}".format(guild.id))
     await guild.system_channel.send("Hi, i'm {0}! Please use -adminset to set the admin role and -prefix to change my prefix! Additionally, you can mention me or use the prefix to start commands! Use {0} help or -help for more info.".format(bot.user.mention))
-    guilds[guild.id] = Server(True, "-", guild.default_role.id, 12, [guild.system_channel.id])
+    guilds[guild.id] = Server(True, "-", guild.default_role.id, 12, [guild.system_channel.id], False, guild.system_channel.id)
     print("Joined new server, and created files!")
 
 @bot.event
@@ -101,7 +105,9 @@ async def on_message(message):
                     
                 message.content = emoji.demojize(message.content.strip()) #can't write unicode characters for some reason, gotta convert
                 if message.content in phrases:
-                    print(message.content, " is already in phrases!")
+                    print("[{0}] in '{1}':".format(datetime.now().time(), message.guild.name), message.content, "--- is already in phrases!")
+                    if setting(message.guild.id).log:
+                        await message.guild.get_channel(setting(message.guild.id).lchannel).send("```"+message.content+" --- is already in phrases!```")
                     return
                 
                 phrases.append(message.content)
@@ -114,7 +120,10 @@ async def on_message(message):
                         phraselist.write(phrase+"\n")
 
             phrases = []
-            print("New phrase added!", message.content)
+            print("[{0}] New phrase added in '{1}':".format(datetime.now().time(), message.guild.name), message.content)
+            if setting(message.guild.id).log:
+                await message.guild.get_channel(setting(message.guild.id).lchannel).send("```New phrase added: "+message.content+"```")
+                
         if setting(message.guild.id).talk and random.randint(1, setting(message.guild.id).freq) == setting(message.guild.id).freq:
             with open("{0}-think.txt".format(message.guild.id)) as phraselist:
                 phrases = [line for line in phraselist.readlines()]
@@ -212,14 +221,13 @@ async def talkchannel(ctx, *args):
     try:
         flag = args[0]
     except IndexError:
-        await ctx.send("Please insert a flag after command! Flags are: a, rm, ?")
+        await ctx.send("Please insert a flag after command! Flags are: `a, rm, ?`")
         return
     if flag == "?":
         await ctx.send("Whitelisted channels: "+str(" ".join([ctx.guild.get_channel(textchannel).mention for textchannel in setting(ctx.guild.id).whitelisted])))
         return
     try:
-        channel = args[1].strip("<#>")
-        channel = int(channel)
+        channel = int(args[1].strip("<#>"))
     except IndexError:
         await ctx.send("Please insert a channel after flag!")
         return
@@ -244,6 +252,52 @@ async def talkchannel(ctx, *args):
         changesetting(ctx, 4, setting(ctx.guild.id).whitelisted)
         await ctx.send("Channel removed!")
     else:
-        await ctx.send("Unknown flag! Flags are: a, rm, ?")
+        await ctx.send("Unknown flag! Flags are: `a, rm, ?`")
 
-bot.run("") #insert the bot token there
+@bot.command()
+@commands.check(admin) 
+async def log(ctx, *args):
+    try:
+        flag = args[0]
+    except IndexError:
+        await ctx.send("Please insert a flag after command! Flags are: `a, rm, ?`")
+        return
+    if flag == "n":
+        setting(ctx.guild.id).log = False
+        changesetting(ctx, 5, 0)
+        await ctx.send("No-longer logging phrases!")
+        return
+    try:
+        channel = int(args[1].strip("<#>"))
+    except ValueError:
+        await ctx.send("Please mention a channel or give channel ID!")
+        return
+    except IndexError:
+        await ctx.send("Please insert a channel after flag!")
+        return
+    if flag == "y":
+        if ctx.guild.get_channel(channel) == None:
+            await ctx.send("This channel does not exist!")
+            return
+        elif channel in setting(ctx.guild.id).whitelisted:
+            await ctx.send("It is not recommended to output logs in a whitelisted channel. And it's not as funny. Do you still want to continue?")
+        else:
+            await ctx.send("It's not as funny when you log phrases. Do you still want to continue?")
+        await ctx.message.add_reaction(u"\U0001F44D")
+        def check(reaction, user):
+            return user == ctx.author and str(reaction.emoji) == u"\U0001F44D"
+        try:
+            reaction, user = await bot.wait_for('reaction_add', timeout=10.0, check=check) #i have no clue what is happening here
+        except asyncio.TimeoutError:
+            await ctx.send("I'll take that as a no, thank you for not logging phrases!")
+        else:
+            setting(ctx.guild.id).log = True
+            setting(ctx.guild.id).lchannel = channel
+            changesetting(ctx, 5, "1")
+            changesetting(ctx, 6, channel)
+            await ctx.send("Logging channel set!")
+            await ctx.guild.get_channel(channel).send("```Logs will now appear in this channel. Happy monitoring!```")
+    else:
+        await ctx.send("Unknown flag! Flags are: `y, n`")
+        
+bot.run("") #insert the bot token there as str
