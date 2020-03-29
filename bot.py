@@ -330,8 +330,9 @@ async def list(ctx, flag, *args):
             await ctx.send("Please input an integer!")
             return
         try:
+            temp = phrases[index] #instead of saying deleted first, it will delete first, then if it fails, it will show an error.
             phrases.pop(index)
-            await ctx.send(str(index)+"th phrase deleted!")
+            await ctx.send("Deleted phrase: "+temp)
         except IndexError:
             await ctx.send("Cannot find that in the list!")
             return
