@@ -23,3 +23,6 @@ Starts commands with the prefix, or ping the bot first. Using prefix after pingi
 `-talkchannel a #general` Will add #general to the whitelisted channels. You can add as many as you like but the bot will only randomly speak in the whitelisted channels, to check what channels are whitelisted, you can do: `-talkchannel ?`
 
 Setting a role, with adminset will allow other roles which are higher in rank than the adminrole to use admin commands.
+
+Why does `list a my phrase here` only come out as `my`?
+* It's a limitation, sadly. You will have to do `list a "my phrase here"` and it will come out as `my phrase here` this might be fixed later on, but definetly not soon.
