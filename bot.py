@@ -313,9 +313,15 @@ async def list(ctx, flag, *args):
     with open("{0}-think.txt".format(ctx.guild.id)) as phraselist:
         phrases = [line for line in phraselist.readlines()]
     if flag == "l":
+        phrasestemp = []
         for index, phrase in enumerate(phrases):
-            phrases[index] = "{0}: ".format(index)+phrase
-        await ctx.send("```"+"".join(phrases)+"```")
+            phrasestemp.append("{0}: ".format(index)+phrase)
+            if index != 0:
+                if index % 30 == 0:
+                    await ctx.send("```"+"".join(phrasestemp)+"```")
+                    phrasestemp = [] #seperates it into chunks of 30, so that it doesn't meet the 2000 char limit on discord.
+        if len(phrasestemp) != 0:
+            await ctx.send("```"+"".join(phrasestemp)+"```") #sends the remainder
         return
     elif flag == "rm":
         try:
