@@ -36,10 +36,10 @@ def setting(guildId):
     return None
 
 async def determine_prefix(bot, msg):
+    prefix = "-"
     if msg.guild: #if message is in a guild
-        return setting(msg.guild.id).prefix
-    else:
-        return "-"
+        prefix = setting(msg.guild.id).prefix
+    return commands.when_mentioned_or(prefix)(bot, msg)
     
 bot = commands.Bot(command_prefix=determine_prefix)
 bot.remove_command('help') #removes the prebuilt help command
@@ -60,8 +60,7 @@ async def owner(ctx):
 
 @bot.event
 async def on_ready():
-    with open("servers.txt") as servers:
-        servers = [line.strip()+"-settings.txt" for line in servers.readlines()]
+    servers = [str(guild.id)+"-settings.txt" for guild in await bot.fetch_guilds().flatten()]
     for guild in servers:
         with open(guild) as settings:
             settings = [item.strip() for item in settings.readlines()]
@@ -71,11 +70,9 @@ async def on_ready():
 @bot.event
 async def on_guild_join(guild):
     with open("{0}-settings.txt".format(guild.id), "w") as file:
-        file.write("1\n-\n{0}\n12\n{1}\n0\n{1}".format(guild.default_role.id, guild.system_channel.id))
+        file.write("1\n-\n{0}\n12\n{1}\n0\n{1}\n40".format(guild.default_role.id, guild.system_channel.id))
     with open("{0}-think.txt".format(guild.id), "w") as file:
         file.write("Hi!")
-    with open("servers.txt", "a") as file:
-        file.write("\n{0}".format(guild.id))
     await guild.system_channel.send("Hi, i'm {0}! Please use `-adminset` to set the admin role and `-prefix` to change my prefix! Additionally, you can mention me or use the prefix to start commands! Use {0} help or `-help` for more info.".format(bot.user.mention))
     guilds[guild.id] = Server(True, "-", guild.default_role.id, 12, [guild.system_channel.id], False, guild.system_channel.id, 40)
     print("[{0}] Joined server: '".format(datetime.now().time())+guild.name+"' and created files!")
@@ -84,13 +81,6 @@ async def on_guild_join(guild):
 async def on_guild_remove(guild):
     os.remove("{0}-settings.txt".format(guild.id))
     os.remove("{0}-think.txt".format(guild.id))
-    with open("servers.txt") as file:
-        servers = [int(item.strip()) for item in file.readlines()]
-    servers.remove(guild.id)
-    servers = ["\n"+str(item) for item in servers]
-    servers[0] = servers[0].strip()
-    with open("servers.txt", "w") as file:
-        file.writelines(servers)
     print("[{0}] Left server '".format(datetime.now().time())+guild.name+"' ;(")
 
 
@@ -98,7 +88,7 @@ async def on_guild_remove(guild):
 async def on_message(message):
     if message.author == bot.user:
         return
-    if message.content.startswith((":", ";", "~", "-", "+", "=", ".", ",", "!", "$", "&", "^", "?")): #ignores commands for every bot in a server, this isn't just brute-force
+    if message.content.startswith((":", ";", "~", "-", "+", "=", ".", ",", "!", "$", "&", "^", "?", bot.user.mention, "".join(["<@!", str(bot.user.id), ">"]))): #ignores commands for every bot in a server, this isn't just brute-force
         await bot.process_commands(message)
         return #don't want it to continue after running a command
     if message.channel.id in setting(message.guild.id).whitelisted:
@@ -287,16 +277,16 @@ async def log(ctx, flag, *args):
             await ctx.send("This channel does not exist!")
             return
         elif channel in setting(ctx.guild.id).whitelisted:
-            await ctx.send("It is not recommended to output logs in a whitelisted channel. And it's not as funny. Do you still want to continue?")
+            await ctx.send("It is not recommended to output logs in a whitelisted channel. And it's not as funny. React above to continue.")
         else:
-            await ctx.send("It's not as funny when you log phrases. Do you still want to continue?")
+            await ctx.send("It's not as funny when you log phrases. React above to continue.")
         await ctx.message.add_reaction(u"\U0001F44D")
         def check(reaction, user):
             return user == ctx.author and str(reaction.emoji) == u"\U0001F44D"
         try:
             reaction, user = await bot.wait_for('reaction_add', timeout=10.0, check=check) #i have no clue what is happening here
         except asyncio.TimeoutError:
-            await ctx.send("I'll take that as a no, thank you for not logging phrases!")
+            await ctx.send("Thank you for not logging phrases!")
         else:
             setting(ctx.guild.id).log = True
             setting(ctx.guild.id).lchannel = channel
@@ -330,9 +320,9 @@ async def list(ctx, flag, *args):
             await ctx.send("Please input an integer!")
             return
         try:
-            temp = phrases[index] #instead of saying deleted first, it will delete first, then if it fails, it will show an error.
+            phrase = phrases[index] #instead of saying deleted first, it will delete first, then if it fails, it will show an error.
             phrases.pop(index)
-            await ctx.send("Deleted phrase: "+temp)
+            await ctx.send("Deleted phrase: "+phrase)
         except IndexError:
             await ctx.send("Cannot find that in the list!")
             return
