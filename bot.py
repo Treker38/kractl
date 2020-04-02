@@ -83,7 +83,6 @@ async def on_guild_remove(guild):
     os.remove("{0}-think.txt".format(guild.id))
     print("[{0}] Left server '".format(datetime.now().time())+guild.name+"' ;(")
 
-
 @bot.event
 async def on_message(message):
     if message.author == bot.user:
@@ -158,6 +157,10 @@ async def moth(ctx):
 @bot.command()
 async def help(ctx):
     await ctx.send("PREFIX: {0} or ping\nCommands are listed here: https://github.com/kurpingspace2/my-son/blob/master/README.md".format(setting(ctx.guild.id).prefix))
+
+@bot.command()
+async def proper(ctx):
+    await ctx.send("`Proper Response`")
 
 @bot.command()
 @commands.check(admin)
@@ -349,4 +352,4 @@ async def list(ctx, flag, *args):
     with open("{0}-think.txt".format(ctx.guild.id), "w") as phraselist:
         phraselist.writelines(phrases)
         
-bot.run("") #insert the bot token there as str
+bot.run("Njg4NTA0NDgwMzY2MzI5OTk1.XoIWpw.-VqSFz3tPv3BgTixEjpVH5aD5NA") #insert the bot token there as str
