@@ -5,6 +5,7 @@ Starts commands with the prefix, or ping the bot first. Using prefix after pingi
 * hug           - hug the bot
 * lamp          - shows you moths around a lamp
 * moth          - shows you a moth
+* proper        - sends a proper message back
 * help          - brings you to this readme file
 
 ## Admin commands:
