@@ -352,4 +352,4 @@ async def list(ctx, flag, *args):
     with open("{0}-think.txt".format(ctx.guild.id), "w") as phraselist:
         phraselist.writelines(phrases)
         
-bot.run("Njg4NTA0NDgwMzY2MzI5OTk1.XoIWpw.-VqSFz3tPv3BgTixEjpVH5aD5NA") #insert the bot token there as str
+bot.run("") #insert the bot token there as str
