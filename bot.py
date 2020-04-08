@@ -73,9 +73,9 @@ async def on_guild_join(guild):
         file.write("1\n-\n{0}\n12\n{1}\n0\n{1}\n40".format(guild.default_role.id, guild.system_channel.id))
     with open("{0}-think.txt".format(guild.id), "w") as file:
         file.write("Hi!")
-    await guild.system_channel.send("Hi, i'm {0}! Please use `-adminset` to set the admin role and `-prefix` to change my prefix! Additionally, you can mention me or use the prefix to start commands! Use {0} help or `-help` for more info.".format(bot.user.mention))
     guilds[guild.id] = Server(True, "-", guild.default_role.id, 12, [guild.system_channel.id], False, guild.system_channel.id, 40)
     print("[{0}] Joined server: '".format(datetime.now().time())+guild.name+"' and created files!")
+    await guild.system_channel.send("Hi, i'm {0}! Please use `-adminset` to set the admin role and `-prefix` to change my prefix! Additionally, you can mention me or use the prefix to start commands! Use {0} help or `-help` for more info.".format(bot.user.mention))
 
 @bot.event
 async def on_guild_remove(guild):
@@ -352,4 +352,4 @@ async def list(ctx, flag, *args):
     with open("{0}-think.txt".format(ctx.guild.id), "w") as phraselist:
         phraselist.writelines(phrases)
         
-bot.run("Njg4NTA0NDgwMzY2MzI5OTk1.XoIWpw.-VqSFz3tPv3BgTixEjpVH5aD5NA") #insert the bot token there as str
+bot.run("") #insert the bot token there as str
