@@ -23,7 +23,7 @@ class Server:
     def __init__(self, t, prfx, arole, f, white, l, lch, lmx):
         self.talk = t
         self.prefix = prfx
-        self.adminRole = arole
+        self.adminrole = arole
         self.freq = f
         self.whitelisted = white
         self.log = l
@@ -49,7 +49,7 @@ async def globally_block_dms(ctx):
     return ctx.guild is not None
 
 async def admin(ctx):
-    if ctx.author.top_role >= ctx.guild.get_role(setting(ctx.guild.id).adminRole):
+    if ctx.author.top_role >= ctx.guild.get_role(setting(ctx.guild.id).adminrole):
         return True
     return False
 
@@ -91,44 +91,43 @@ async def on_message(message):
         await bot.process_commands(message)
         return #don't want it to continue after running a command
     if message.channel.id in setting(message.guild.id).whitelisted:
+        with open("{0}-think.txt".format(message.guild.id)) as file:
+            phrases = [line.strip() for line in file.readlines()]
         if random.randint(1,10) == 10:
-            with open("{0}-think.txt".format(message.guild.id)) as file:
-                phrases = [line.strip() for line in file.readlines()]
-                if "<@" in message.content:
-                    message.content = re.sub("<[^>]+>", "", message.content)
+            if "<@" in message.content:
+                message.content = re.sub("<[^>]+>", "", message.content)
                     
-                if message.attachments != []:
-                    message.content = message.content+" "+message.attachments[0].url
-                    message.content = message.content.strip()
+            if message.attachments != []:
+                message.content = message.content+" "+message.attachments[0].url
+                message.content = message.content.strip()
                     
-                if message.content == "" or message.content == "** **" or message.content == "*** ***":
-                    message.content = "_ _"
+            if message.content == "" or message.content == "** **" or message.content == "*** ***":
+                message.content = "_ _"
                     
-                elif "\n" in message.content:
-                    message.content = message.content.replace("\n", " ")
+            if "\n" in message.content:
+                message.content = message.content.replace("\n", " ")
                     
-                message.content = emoji.demojize(message.content.strip()) #can't write unicode characters for some reason, gotta convert
-                if message.content in phrases:
-                    print("[{0}] in '{1}':".format(datetime.now().time(), message.guild.name), message.content, "--- is already in phrases!")
-                    if setting(message.guild.id).log:
-                        await message.guild.get_channel(setting(message.guild.id).lchannel).send("```"+message.content+" --- is already in phrases!```")
-                    return
-                
-                phrases.append(message.content)
-                while len(phrases) > setting(message.guild.id).listmax:
-                    phrases.pop(0)
-                        
-                with open("{0}-think.txt".format(message.guild.id), "w") as phraselist:
-                    for phrase in phrases:
-                        phraselist.write(phrase+"\n")
+            message.content = emoji.demojize(message.content.strip()) #can't write unicode characters for some reason, gotta convert
+            if message.content in phrases:
+                print("[{0}] in '{1}':".format(datetime.now().time(), message.guild.name), message.content, "--- is already in phrases!")
+                if setting(message.guild.id).log:
+                    await message.guild.get_channel(setting(message.guild.id).lchannel).send("```"+message.content+" --- is already in phrases!```")
+                return
+
+            phrases.append(message.content)
+            while len(phrases) > setting(message.guild.id).listmax:
+                phrases.pop(0)
+                    
+            with open("{0}-think.txt".format(message.guild.id), "w") as phraselist:
+                for phrase in phrases:
+                    phraselist.write(phrase+"\n")
 
             print("[{0}] New phrase added in '{1}':".format(datetime.now().time(), message.guild.name), message.content)
             if setting(message.guild.id).log:
                 await message.guild.get_channel(setting(message.guild.id).lchannel).send("```New phrase added: "+message.content+"```")
+            return
                 
         if setting(message.guild.id).talk and random.randint(1, setting(message.guild.id).freq) == setting(message.guild.id).freq:
-            with open("{0}-think.txt".format(message.guild.id)) as phraselist:
-                phrases = [line for line in phraselist.readlines()]
             await message.channel.send(emoji.emojize(random.choice(phrases))) #turns any emoji back into a unicode character and sends the message
 
 @bot.event
@@ -157,10 +156,6 @@ async def moth(ctx):
 @bot.command()
 async def help(ctx):
     await ctx.send("PREFIX: {0} or ping\nCommands are listed here: https://github.com/kurpingspace2/my-son/wiki/Commands".format(setting(ctx.guild.id).prefix))
-
-@bot.command()
-async def proper(ctx):
-    await ctx.send("`Proper Response`")
 
 @bot.command()
 @commands.check(admin)
@@ -193,7 +188,7 @@ async def prefix(ctx, newprefix):
 @commands.check(owner)
 async def adminset(ctx, role):
     if role == "?":
-        await ctx.send("Admin role is: "+ctx.guild.get_role(setting(ctx.guild.id).adminRole).mention)
+        await ctx.send("Admin role is: "+ctx.guild.get_role(setting(ctx.guild.id).adminrole).mention)
         return
     try:
         role = int(role.strip("<@&>"))
@@ -203,7 +198,7 @@ async def adminset(ctx, role):
     if ctx.guild.get_role(role) == None:
         await ctx.send("This role does not exist!")
         return
-    setting(ctx.guild.id).adminRole = role
+    setting(ctx.guild.id).adminrole = role
     changesetting(ctx, 2, role)
     await ctx.send("Admin role set to: {0}".format(ctx.guild.get_role(role).mention))
 
@@ -309,13 +304,14 @@ async def list(ctx, flag, *args):
         phrasestemp = []
         for index, phrase in enumerate(phrases):
             phrasestemp.append("{0}: ".format(index)+phrase)
-            if index != 0:
+            if index != 0: #seperates it into chunks of 30, so that it doesn't meet the 2000 char limit on discord.
                 if index % 30 == 0:
                     await ctx.send("```"+"".join(phrasestemp)+"```")
-                    phrasestemp = [] #seperates it into chunks of 30, so that it doesn't meet the 2000 char limit on discord.
+                    phrasestemp = []
         if len(phrasestemp) != 0:
             await ctx.send("```"+"".join(phrasestemp)+"```") #sends the remainder
         return
+    
     elif flag == "rm":
         try:
             index = int(args[0])
@@ -329,9 +325,13 @@ async def list(ctx, flag, *args):
         except IndexError:
             await ctx.send("Cannot find that in the list!")
             return
+        
     elif flag == "a":
         phrases.append(args[0]+"\n")
+        while len(phrases) > setting(ctx.guild.id).listmax:
+            phrases.pop(0)
         await ctx.send("Added phrase!")
+        
     elif flag == "max":
         if args[0] == "?":
             await ctx.send("List maximum is: `"+str(setting(ctx.guild.id).listmax)+"`")
@@ -347,6 +347,7 @@ async def list(ctx, flag, *args):
             await ctx.send("List maximum set to: `"+str(maximum)+"`")
         else:
             await ctx.send("Please input a number higher than `4`")
+            
     else:
         await ctx.send("Unknown flag! Flags are: `l, a, rm, max`")
     with open("{0}-think.txt".format(ctx.guild.id), "w") as phraselist:
