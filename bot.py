@@ -62,8 +62,16 @@ async def owner(ctx):
 async def on_ready():
     servers = [str(guild.id)+"-settings.txt" for guild in await bot.fetch_guilds().flatten()]
     for guild in servers:
-        with open(guild) as settings:
-            settings = [item.strip() for item in settings.readlines()]
+        try:
+            with open(guild) as settings:
+                settings = [item.strip() for item in settings.readlines()]
+        except FileNotFoundError:
+            disguild = bot.get_guild(int(guild.strip("-settings.txt")))
+            settings = ["1", "-", str(disguild.default_role.id), "12", str(disguild.system_channel.id), "0", str(disguild.system_channel.id), "40"]
+            with open(guild, "w") as file:
+                file.write("1\n-\n{0}\n12\n{1}\n0\n{1}\n40".format(disguild.default_role.id, disguild.system_channel.id))
+            with open(guild.replace("settings", "think"), "w") as file:
+                file.write("Hi!")
         guilds[int(guild.strip("-settings.txt"))] = Server(bool(int(settings[0])), settings[1], int(settings[2]), int(settings[3]), [int(setting) for setting in settings[4].strip("[]").split(", ")], bool(int(settings[5])), int(settings[6]), int(settings[7]))
     print('Here we go again {0.user}'.format(bot))
 
