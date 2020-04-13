@@ -176,11 +176,13 @@ async def speak(ctx):
     await ctx.message.delete()
 
 @bot.command()
-@commands.check(admin)
 async def shutup(ctx):
-    setting(ctx.guild.id).talk = False
-    changesetting(ctx, 0, 0)
-    await ctx.send("Okay... :(")
+    if admin:
+        setting(ctx.guild.id).talk = False
+        changesetting(ctx, 0, 0)
+        await ctx.send("Okay... :(")
+    else:
+        await ctx.send("No >:(")
 
 @bot.command()
 @commands.check(admin)
