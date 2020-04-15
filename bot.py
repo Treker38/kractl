@@ -103,17 +103,17 @@ async def on_message(message):
             phrases = [line.strip() for line in file.readlines()]
         if random.randint(1,10) == 10:
             if "<@" in message.content:
-                message.content = re.sub("<[^>]+>", "", message.content)
+                message.content = re.sub("<[^>]+>", "@someone", message.content)
                     
             if message.attachments != []:
                 message.content = message.content+" "+message.attachments[0].url
-                message.content = message.content.strip()
-                    
-            if message.content == "" or message.content == "** **" or message.content == "*** ***":
-                message.content = "_ _"
-                    
+
             if "\n" in message.content:
                 message.content = message.content.replace("\n", " ")
+            
+            " ".join(message.content.split())
+            if message.content == "" or message.content == "** **" or message.content == "*** ***":
+                message.content = "_ _"
                     
             message.content = emoji.demojize(message.content.strip()) #can't write unicode characters for some reason, gotta convert
             if message.content in phrases:
