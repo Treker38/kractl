@@ -103,7 +103,7 @@ async def on_message(message):
             phrases = [line.strip() for line in file.readlines()]
         if random.randint(1,10) == 10:
             if "<@" in message.content:
-                message.content = re.sub("<[^>]+>", "@someone", message.content)
+                message.content = re.sub("<[^>]+>", "{0}", message.content)
                     
             if message.attachments != []:
                 message.content = message.content+" "+message.attachments[0].url
@@ -136,7 +136,7 @@ async def on_message(message):
             return
                 
         if setting(message.guild.id).talk and random.randint(1, setting(message.guild.id).freq) == setting(message.guild.id).freq:
-            await message.channel.send(emoji.emojize(random.choice(phrases))) #turns any emoji back into a unicode character and sends the message
+            await message.channel.send(emoji.emojize(random.choice(phrases).format(message.author.mention))) #turns any emoji back into a unicode character and sends the message
 
 @bot.event
 async def on_command_error(ctx, err):
@@ -172,7 +172,7 @@ async def speak(ctx):
     changesetting(ctx, 0, 1)
     with open("{0}-think.txt".format(ctx.guild.id)) as phraselist:
         phrases = [line for line in phraselist.readlines()]
-    await ctx.send(emoji.emojize(random.choice(phrases)))
+    await ctx.send(emoji.emojize(random.choice(phrases).format(ctx.author.mention)))
     await ctx.message.delete()
 
 @bot.command()
