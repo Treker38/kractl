@@ -163,7 +163,7 @@ async def moth(ctx):
 
 @bot.command()
 async def help(ctx):
-    await ctx.send("PREFIX: {0} or ping\nCommands are listed here: https://github.com/kurpingspace2/my-son/wiki/Commands".format(setting(ctx.guild.id).prefix))
+    await ctx.send("PREFIX: {0} or ping\nCommands are listed here: https://github.com/kurpingspace2/kractl/wiki/Commands".format(setting(ctx.guild.id).prefix))
 
 @bot.command()
 @commands.check(admin)
