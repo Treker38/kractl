@@ -3,7 +3,6 @@ https://github.com/kurpingspace2/kractl/wiki
 
 ## Dependencies
 * discord.py
-* emoji
 
 It should work out of the box. Built on python 3.8, works and tested on 3.7.
 
