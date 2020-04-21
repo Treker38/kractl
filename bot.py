@@ -5,9 +5,9 @@ from discord.ext import commands
 from datetime import datetime
 import random
 import re
-import emoji
 import asyncio
 import os
+import io
 
 messages = ["God fucking damn it, {0}", "Fuck you, {0}", "Leave me alone, I swear to god. You're so fucking annoying and it pisses me off, {0}", "FUCK OFF! {0}", "Pleeease bother someone else oh my fucking god, {0}", "I hope you actually fucking die, {0}"]
 guilds = {}
@@ -69,21 +69,29 @@ async def on_ready():
             disguild = bot.get_guild(int(guild.strip("-settings.txt")))
             settings = ["1", "-", str(disguild.default_role.id), "12", str(disguild.system_channel.id), "0", str(disguild.system_channel.id), "40"]
             with open(guild, "w") as file:
-                file.write("1\n-\n{0}\n12\n{1}\n0\n{1}\n40".format(disguild.default_role.id, disguild.system_channel.id))
+                try:
+                    file.write("1\n-\n{0}\n20\n{1}\n0\n{1}\n80".format(disguild.default_role.id, disguild.system_channel.id))
+                except:
+                    file.write("1\n-\n{0}\n20\n{1}\n0\n{1}\n80".format(disguild.default_role.id, disguild.text_channels[0].id))
             with open(guild.replace("settings", "think"), "w") as file:
-                file.write("Hi!")
+                file.write("Hi!\n")
+            print("Remade files for:", disguild.name)
         guilds[int(guild.strip("-settings.txt"))] = Server(bool(int(settings[0])), settings[1], int(settings[2]), int(settings[3]), [int(setting) for setting in settings[4].strip("[]").split(", ")], bool(int(settings[5])), int(settings[6]), int(settings[7]))
     print('Here we go again {0.user}'.format(bot))
 
 @bot.event
 async def on_guild_join(guild):
+    try:
+        jndchnnl = guild.system_channel.id
+    except:
+        jndchnnl = guild.text_channels[0].id #sometimes there is no system channel
     with open("{0}-settings.txt".format(guild.id), "w") as file:
-        file.write("1\n-\n{0}\n12\n{1}\n0\n{1}\n40".format(guild.default_role.id, guild.system_channel.id))
+        file.write("1\n-\n{0}\n20\n{1}\n0\n{1}\n80".format(guild.default_role.id, jndchnnl))
     with open("{0}-think.txt".format(guild.id), "w") as file:
-        file.write("Hi!")
-    guilds[guild.id] = Server(True, "-", guild.default_role.id, 12, [guild.system_channel.id], False, guild.system_channel.id, 40)
+        file.write("Hi!\n")
+    guilds[guild.id] = Server(True, "-", guild.default_role.id, 12, [jndchnnl], False, jndchnnl, 40)
     print("[{0}] Joined server: '".format(datetime.now().time())+guild.name+"' and created files!")
-    await guild.system_channel.send("Hi, i'm {0}! Please use `-adminset` to set the admin role and `-prefix` to change my prefix! Additionally, you can mention me or use the prefix to start commands! Use {0} help or `-help` for more info.".format(bot.user.mention))
+    await guild.get_channel(jndchnnl).send("Hi, i'm {0}! Please use `-adminset` to set the admin role and `-prefix` to change my prefix! Additionally, you can mention me or use the prefix to start commands! Use {0} help or `-help` for more info.".format(bot.user.mention))
 
 @bot.event
 async def on_guild_remove(guild):
@@ -99,7 +107,7 @@ async def on_message(message):
         await bot.process_commands(message)
         return #don't want it to continue after running a command
     if message.channel.id in setting(message.guild.id).whitelisted:
-        with open("{0}-think.txt".format(message.guild.id)) as file:
+        with io.open("{0}-think.txt".format(message.guild.id), encoding="utf-8") as file:
             phrases = [line.strip() for line in file.readlines()]
         if random.randint(1,10) == 10:
             if "<@" in message.content:
@@ -109,13 +117,12 @@ async def on_message(message):
                 message.content = message.content+" "+message.attachments[0].url
 
             if "\n" in message.content:
-                message.content = message.content.replace("\n", " ")
+                message.content = message.content.replace("\n", "$line$")
             
             " ".join(message.content.split())
             if message.content == "" or message.content == "** **" or message.content == "*** ***":
                 message.content = "_ _"
                     
-            message.content = emoji.demojize(message.content.strip()) #can't write unicode characters for some reason, gotta convert
             if message.content in phrases:
                 print("[{0}] in '{1}':".format(datetime.now().time(), message.guild.name), message.content, "--- is already in phrases!")
                 if setting(message.guild.id).log:
@@ -126,7 +133,7 @@ async def on_message(message):
             while len(phrases) > setting(message.guild.id).listmax:
                 phrases.pop(0)
                     
-            with open("{0}-think.txt".format(message.guild.id), "w") as phraselist:
+            with io.open("{0}-think.txt".format(message.guild.id), "w", encoding="utf-8") as phraselist:
                 for phrase in phrases:
                     phraselist.write(phrase+"\n")
 
@@ -136,7 +143,7 @@ async def on_message(message):
             return
                 
         if setting(message.guild.id).talk and random.randint(1, setting(message.guild.id).freq) == setting(message.guild.id).freq:
-            await message.channel.send(emoji.emojize(random.choice(phrases).format(message.author.mention))) #turns any emoji back into a unicode character and sends the message
+            await message.channel.send(random.choice(phrases).replace("$line$", "\n").format(message.author.mention)) #turns any emoji back into a unicode character and sends the message
 
 @bot.event
 async def on_command_error(ctx, err):
@@ -170,9 +177,9 @@ async def help(ctx):
 async def speak(ctx):
     setting(ctx.guild.id).talk = True
     changesetting(ctx, 0, 1)
-    with open("{0}-think.txt".format(ctx.guild.id)) as phraselist:
+    with io.open("{0}-think.txt".format(ctx.guild.id), encoding="utf-8") as phraselist:
         phrases = [line for line in phraselist.readlines()]
-    await ctx.send(emoji.emojize(random.choice(phrases).format(ctx.author.mention)))
+    await ctx.send(random.choice(phrases).replace("$line$", "\n").format(ctx.author.mention))
     await ctx.message.delete()
 
 @bot.command()
@@ -308,23 +315,37 @@ async def log(ctx, flag, *args):
 @bot.command()
 @commands.check(admin) 
 async def list(ctx, flag, *args):
-    with open("{0}-think.txt".format(ctx.guild.id)) as phraselist:
+    with io.open("{0}-think.txt".format(ctx.guild.id), encoding="utf-8") as phraselist:
         phrases = [line for line in phraselist.readlines()]
     if flag == "l":
-        phrasestemp = []
+        cluster = []
+        clusters = []
         for index, phrase in enumerate(phrases):
-            phrasestemp.append("{0}: ".format(index)+phrase)
-            if index != 0: #seperates it into chunks of 30, so that it doesn't meet the 2000 char limit on discord.
-                if index % 30 == 0:
-                    await ctx.send("```"+"".join(phrasestemp)+"```")
-                    phrasestemp = []
-        if len(phrasestemp) != 0:
-            await ctx.send("```"+"".join(phrasestemp)+"```") #sends the remainder
+            cluster.append("{0}: ".format(index+1)+phrase)
+            if index != 0 and index % 30 == 0: #seperates it into chunks of 30, so that it doesn't meet the 2000 char limit on discord.
+                clusters.append("```"+"".join(cluster)+"```")
+                cluster = []
+        if len(cluster) != 0:
+            clusters.append("```"+"".join(cluster)+"```") #sends the remainder
+        if args[0] == "all":
+            for cluster in clusters:
+                await ctx.send(cluster)
+            return
+        if args[0] == "?":
+            await ctx.send("`{0}` clusters\n`{1}` phrases".format(len(clusters), len(phrases)))
+            return
+        try:
+            await ctx.send(clusters[int(args[0])-1])
+            await ctx.send("Cluster: `"+args[0]+"`")
+        except ValueError:
+            await ctx.send("Please give `a`, `?` or an integer!")
+        except IndexError:
+            await ctx.send("This does cluster does not exist!")
         return
     
     elif flag == "rm":
         try:
-            index = int(args[0])
+            index = int(args[0])-1
         except ValueError:
             await ctx.send("Please input an integer!")
             return
@@ -360,7 +381,7 @@ async def list(ctx, flag, *args):
             
     else:
         await ctx.send("Unknown flag! Flags are: `l, a, rm, max`")
-    with open("{0}-think.txt".format(ctx.guild.id), "w") as phraselist:
+    with io.open("{0}-think.txt".format(ctx.guild.id), "w", encoding="utf-8") as phraselist:
         phraselist.writelines(phrases)
         
 bot.run("") #insert the bot token there as str
