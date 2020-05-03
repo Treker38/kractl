@@ -125,8 +125,6 @@ async def on_message(message):
                     
             if message.content in phrases:
                 print("[{0}] in '{1}':".format(datetime.now().time(), message.guild.name), message.content, "--- is already in phrases!")
-                if setting(message.guild.id).log:
-                    await message.guild.get_channel(setting(message.guild.id).lchannel).send("```"+message.content+" --- is already in phrases!```")
                 return
 
             phrases.append(message.content)
@@ -151,6 +149,8 @@ async def on_command_error(ctx, err):
         await ctx.send("Invalid permissions!") 
     elif isinstance(err, commands.CommandNotFound):
         await ctx.send("Command not found! Try `{0}help` for a list of proper commands.".format(setting(ctx.guild.id).prefix))
+    elif isinstance(err, commands.MissingRequiredArgument):
+        await ctx.send("This command requires more arguments!")
 
 @bot.command()
 async def hi(ctx):
@@ -317,26 +317,30 @@ async def log(ctx, flag, *args):
 async def list(ctx, flag, *args):
     with io.open("{0}-think.txt".format(ctx.guild.id), encoding="utf-8") as phraselist:
         phrases = [line for line in phraselist.readlines()]
+    if len(args) == 0:
+        await ctx.send("This command requires more arguments!")
+        return
     if flag == "l":
         cluster = []
         clusters = []
         for index, phrase in enumerate(phrases):
-            cluster.append("{0}: ".format(index+1)+phrase)
-            if index != 0 and index % 30 == 0: #seperates it into chunks of 30, so that it doesn't meet the 2000 char limit on discord.
+            if len("```"+"".join(cluster)+"```") > 1000:
                 clusters.append("```"+"".join(cluster)+"```")
                 cluster = []
-        if len(cluster) != 0:
-            clusters.append("```"+"".join(cluster)+"```") #sends the remainder
+            cluster.append("{0}: ".format(index+1)+phrase)
+        if cluster != []:
+            clusters.append("```"+"".join(cluster)+"```") #adds the remainder
+
         if args[0] == "all":
             for cluster in clusters:
                 await ctx.send(cluster)
             return
+
         if args[0] == "?":
             await ctx.send("`{0}` clusters\n`{1}` phrases".format(len(clusters), len(phrases)))
             return
         try:
             await ctx.send(clusters[int(args[0])-1])
-            await ctx.send("Cluster: `"+args[0]+"`")
         except ValueError:
             await ctx.send("Please give `a`, `?` or an integer!")
         except IndexError:
@@ -344,18 +348,17 @@ async def list(ctx, flag, *args):
         return
     
     elif flag == "rm":
-        try:
-            index = int(args[0])-1
-        except ValueError:
-            await ctx.send("Please input an integer!")
-            return
-        try:
-            phrase = phrases[index] #instead of saying deleted first, it will delete first, then if it fails, it will show an error.
-            phrases.pop(index)
-            await ctx.send("Deleted phrase: "+phrase)
-        except IndexError:
-            await ctx.send("Cannot find that in the list!")
-            return
+        for index in args:
+            try:
+                index = int(index)-1
+                try:
+                    phrase = phrases[index] #instead of saying deleted first, it will delete first, then if it fails, it will show an error.
+                    phrases.pop(index)
+                    await ctx.send("Deleted phrase: `"+phrase+"`")
+                except IndexError:
+                    await ctx.send("Cannot find `{0}` in the list!".format(index))
+            except ValueError:
+                await ctx.send("`{0}` isn't an integer".format(index))
         
     elif flag == "a":
         phrases.append(args[0]+"\n")
