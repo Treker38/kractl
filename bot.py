@@ -112,14 +112,15 @@ async def on_message(message):
         if random.randint(1,10) == 10:
             if "<@" in message.content:
                 message.content = re.sub("<[^>]+>", "{0}", message.content)
+
+            message.content.replace("@everyone", "")
+            message.content.replace("@here", "")
+            message.content = message.content.replace("\n", "$line$")
                     
             if message.attachments != []:
                 message.content = message.content+" "+message.attachments[0].url
 
-            if "\n" in message.content:
-                message.content = message.content.replace("\n", "$line$")
-            
-            " ".join(message.content.split())
+            " ".join(message.content.split()) #removes double spaces
             if message.content == "" or message.content == "** **" or message.content == "*** ***":
                 message.content = "_ _"
                     
@@ -141,7 +142,7 @@ async def on_message(message):
             return
                 
         if setting(message.guild.id).talk and random.randint(1, setting(message.guild.id).freq) == setting(message.guild.id).freq:
-            await message.channel.send(random.choice(phrases).replace("$line$", "\n").format(message.author.mention)) #turns any emoji back into a unicode character and sends the message
+            await message.channel.send(random.choice(phrases).replace("$line$", "\n").format(message.author.mention)) #replaces any flags with things like mentions or line breaks
 
 @bot.event
 async def on_command_error(ctx, err):
