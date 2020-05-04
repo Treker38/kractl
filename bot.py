@@ -324,10 +324,11 @@ async def list(ctx, flag, *args):
         cluster = []
         clusters = []
         for index, phrase in enumerate(phrases):
-            if len("```"+"".join(cluster)+"```") > 1000:
-                clusters.append("```"+"".join(cluster)+"```")
-                cluster = []
+            previous = cluster.copy()
             cluster.append("{0}: ".format(index+1)+phrase)
+            if len("```"+"".join(cluster)+"```") > 2000:
+                clusters.append("```"+"".join(previous)+"```")
+                cluster = ["{0}: ".format(index+1)+phrase]
         if cluster != []:
             clusters.append("```"+"".join(cluster)+"```") #adds the remainder
 
