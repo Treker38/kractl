@@ -357,4 +357,4 @@ async def list(ctx, flag, *args):
         await ctx.send("Unknown flag! Flags are: `l, a, rm, max`")
     write(ctx)
         
-bot.run("Njg4NTA0NDgwMzY2MzI5OTk1.Xrqomg.PVusxDzDb6FAgdI6RQNfKy8R90Y") #insert the bot token there as str
+bot.run("") #insert the bot token there as str
