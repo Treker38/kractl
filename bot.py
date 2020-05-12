@@ -88,8 +88,8 @@ async def on_message(message):
         return #don't want it to continue after running a command
     if message.channel.id in guilds[message.guild.id].whitelisted:
         if random.randint(1,10) == 10:
-            if "<@" in message.content:
-                message.content = re.sub("<[^>]+>", "{0}", message.content)
+            if "<@" in content:
+                content = re.sub("<[^>]+>", "{0}", content)
 
             content.replace("@everyone", "")
             content.replace("@here", "")
