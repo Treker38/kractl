@@ -83,8 +83,9 @@ async def on_message(message):
     content = message.content
     if message.author == bot.user:
         return
-    if content.startswith((":", ";", "~", "-", "+", "=", ".", ",", "!", "$", "&", "^", "?", bot.user.mention, "".join(["<@!", str(bot.user.id), ">"]))): #ignores commands for every bot in a server, this isn't just brute-force
-        await bot.process_commands(message)
+    if content.startswith((":", ";", "~", "-", "+", "=", ".", ",", "!", "$", "&", "^", "?", "[", "]", "'", "%", "£", bot.user.mention, "".join(["<@!", str(bot.user.id), ">"]))): #ignores commands for every bot in a server, this isn't just brute-force
+        if not content.startswith(guilds[message.guild.id].prefix+guilds[message.guild.id].prefix): #if the prefix is not called twice
+            await bot.process_commands(message)
         return #don't want it to continue after running a command
     if message.channel.id in guilds[message.guild.id].whitelisted:
         if random.randint(1,10) == 10:
@@ -167,12 +168,12 @@ async def shutup(ctx):
 @bot.command()
 @commands.check(admin)
 async def prefix(ctx, newprefix):
-    if len(newprefix) == 1 and newprefix in ":;~-+=.,!$&^?":
+    if len(newprefix) == 1 and newprefix in ":;~-+=.,!$&^?[]'%£":
         guilds[ctx.guild.id].prefix = newprefix
         write(ctx)
         await ctx.send("Prefix set to: {0}".format(newprefix))
     else:
-        await ctx.send("Invalid prefix! Avaliable prefixes: `:;~-+=.,!$&^?`")
+        await ctx.send("Invalid prefix! Avaliable prefixes: `:;~-+=.,!$&^?[]'%£`")
 
 @bot.command()
 @commands.check(owner)
