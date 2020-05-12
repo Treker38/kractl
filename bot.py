@@ -7,49 +7,44 @@ import random
 import re
 import asyncio
 import os
+import json
 import io
-
-messages = ["God fucking damn it, {0}", "Fuck you, {0}", "Leave me alone, I swear to god. You're so fucking annoying and it pisses me off, {0}", "FUCK OFF! {0}", "Pleeease bother someone else oh my fucking god, {0}", "I hope you actually fucking die, {0}"]
-guilds = {}
-
-def changesetting(ctx, line, contents):
-    with open("{0}-settings.txt".format(ctx.guild.id)) as file:
-        data = file.readlines()
-    data[line] = str(contents)+"\n"
-    with open("{0}-settings.txt".format(ctx.guild.id), "w") as file:
-        file.writelines(data)
-
-class Server:
-    def __init__(self, t, prfx, arole, f, white, l, lch, lmx):
-        self.talk = t
-        self.prefix = prfx
-        self.adminrole = arole
-        self.freq = f
-        self.whitelisted = white
-        self.log = l
-        self.lchannel = lch
-        self.listmax = lmx
-        
-def setting(guildId):
-    if guildId in guilds:
-        return guilds[guildId]
-    return None
 
 async def determine_prefix(bot, msg):
     prefix = "-"
     if msg.guild: #if message is in a guild
-        prefix = setting(msg.guild.id).prefix
+        prefix = guilds[msg.guild.id].prefix
     return commands.when_mentioned_or(prefix)(bot, msg)
-    
 bot = commands.Bot(command_prefix=determine_prefix)
 bot.remove_command('help') #removes the prebuilt help command
+
+messages = ["God fucking damn it, {0}", "Fuck you, {0}", "Leave me alone, I swear to god. You're so fucking annoying and it pisses me off, {0}", "FUCK OFF! {0}", "Pleeease bother someone else oh my fucking god, {0}", "I hope you actually fucking die, {0}"]
+guilds = {}
+
+class Server(object):
+    def __init__(self, j):
+        self.__dict__ = json.load(j)
+
+def createdefault(guild):
+    disguild = bot.get_guild(guild)
+    with open(str(guild)+".json", "w") as jfile:
+        try:
+            json.dump({"talk":True, "prefix":"-", "adminrole":disguild.default_role.id, "freq":20, "whitelisted":[disguild.system_channel.id], "log":False, "lchannel":disguild.system_channel.id, "listmax":80, "phrases":["Hi!"]}, jfile)
+        except: #if there is no system channel
+            json.dump({"talk":True, "prefix":"-", "adminrole":disguild.default_role.id, "freq":20, "whitelisted":[disguild.text_channels[0].id], "log":False, "lchannel":disguild.text_channels[0].id, "listmax":80, "phrases":["Hi!"]}, jfile)
+    with open(str(guild)+".json") as jfile:
+        guilds[guild] = Server(jfile)
+
+def write(ctx):
+    with open(str(ctx.guild.id)+".json", "w") as jfile:
+        json.dump(guilds[ctx.guild.id].__dict__, jfile)
 
 @bot.check
 async def globally_block_dms(ctx):
     return ctx.guild is not None
 
 async def admin(ctx):
-    if ctx.author.top_role >= ctx.guild.get_role(setting(ctx.guild.id).adminrole):
+    if ctx.author.top_role >= ctx.guild.get_role(guilds[ctx.guild.id].adminrole):
         return True
     return False
 
@@ -60,96 +55,75 @@ async def owner(ctx):
 
 @bot.event
 async def on_ready():
-    servers = [str(guild.id)+"-settings.txt" for guild in await bot.fetch_guilds().flatten()]
+    servers = [guild.id for guild in await bot.fetch_guilds().flatten()]
     for guild in servers:
         try:
-            with open(guild) as settings:
-                settings = [item.strip() for item in settings.readlines()]
+            with io.open(str(guild)+".json", encoding="utf-8") as jfile:
+                guilds[guild] = Server(jfile)
         except FileNotFoundError:
-            disguild = bot.get_guild(int(guild.strip("-settings.txt")))
-            settings = ["1", "-", str(disguild.default_role.id), "12", str(disguild.system_channel.id), "0", str(disguild.system_channel.id), "40"]
-            with open(guild, "w") as file:
-                try:
-                    file.write("1\n-\n{0}\n20\n{1}\n0\n{1}\n80".format(disguild.default_role.id, disguild.system_channel.id))
-                except:
-                    file.write("1\n-\n{0}\n20\n{1}\n0\n{1}\n80".format(disguild.default_role.id, disguild.text_channels[0].id))
-            with open(guild.replace("settings", "think"), "w") as file:
-                file.write("Hi!\n")
-            print("Remade files for:", disguild.name)
-        guilds[int(guild.strip("-settings.txt"))] = Server(bool(int(settings[0])), settings[1], int(settings[2]), int(settings[3]), [int(setting) for setting in settings[4].strip("[]").split(", ")], bool(int(settings[5])), int(settings[6]), int(settings[7]))
+            createdefault(guild)
+            print("Remade files for:", bot.get_guild(guild).name)
     print('Here we go again {0.user}'.format(bot))
 
 @bot.event
 async def on_guild_join(guild):
-    try:
-        jndchnnl = guild.system_channel.id
-    except:
-        jndchnnl = guild.text_channels[0].id #sometimes there is no system channel
-    with open("{0}-settings.txt".format(guild.id), "w") as file:
-        file.write("1\n-\n{0}\n20\n{1}\n0\n{1}\n80".format(guild.default_role.id, jndchnnl))
-    with open("{0}-think.txt".format(guild.id), "w") as file:
-        file.write("Hi!\n")
-    guilds[guild.id] = Server(True, "-", guild.default_role.id, 12, [jndchnnl], False, jndchnnl, 40)
+    createdefault(guild)
     print("[{0}] Joined server: '".format(datetime.now().time())+guild.name+"' and created files!")
-    await guild.get_channel(jndchnnl).send("Hi, i'm {0}! Please use `-adminset` to set the admin role and `-prefix` to change my prefix! Additionally, you can mention me or use the prefix to start commands! Use {0} help or `-help` for more info.".format(bot.user.mention))
+    await guild.get_channel(guilds[guild.id].lchannel).send("Hi, i'm {0}! Please use `-adminset` to set the admin role and `-prefix` to change my prefix! Additionally, you can mention me or use the prefix to start commands! Use {0} help or `-help` for more info.".format(bot.user.mention))
 
 @bot.event
 async def on_guild_remove(guild):
-    os.remove("{0}-settings.txt".format(guild.id))
-    os.remove("{0}-think.txt".format(guild.id))
+    os.remove(str(guild.id)+".json")
+    del guilds[guild.id] #not sure if removing the class from the dictionary will actually remove  the class from memory, but who knows.
     print("[{0}] Left server '".format(datetime.now().time())+guild.name+"' ;(")
 
 @bot.event
 async def on_message(message):
+    phrases = guilds[message.guild.id].phrases
+    content = message.content
     if message.author == bot.user:
         return
-    if message.content.startswith((":", ";", "~", "-", "+", "=", ".", ",", "!", "$", "&", "^", "?", bot.user.mention, "".join(["<@!", str(bot.user.id), ">"]))): #ignores commands for every bot in a server, this isn't just brute-force
+    if content.startswith((":", ";", "~", "-", "+", "=", ".", ",", "!", "$", "&", "^", "?", bot.user.mention, "".join(["<@!", str(bot.user.id), ">"]))): #ignores commands for every bot in a server, this isn't just brute-force
         await bot.process_commands(message)
         return #don't want it to continue after running a command
-    if message.channel.id in setting(message.guild.id).whitelisted:
-        with io.open("{0}-think.txt".format(message.guild.id), encoding="utf-8") as file:
-            phrases = [line.strip() for line in file.readlines()]
+    if message.channel.id in guilds[message.guild.id].whitelisted:
         if random.randint(1,10) == 10:
             if "<@" in message.content:
                 message.content = re.sub("<[^>]+>", "{0}", message.content)
 
-            message.content.replace("@everyone", "")
-            message.content.replace("@here", "")
-            message.content = message.content.replace("\n", "$line$")
+            content.replace("@everyone", "")
+            content.replace("@here", "")
                     
             if message.attachments != []:
-                message.content = message.content+" "+message.attachments[0].url
+                content = content+" "+message.attachments[0].url
 
-            " ".join(message.content.split()) #removes double spaces
-            if message.content == "" or message.content == "** **" or message.content == "*** ***":
-                message.content = "_ _"
+            " ".join(message.content.split()) #removes double or more spaces
+            if content == "" or content == "** **" or content == "*** ***": # these are all the same message basically, just a blank message.
+                content = "_ _"
                     
-            if message.content in phrases:
-                print("[{0}] in '{1}':".format(datetime.now().time(), message.guild.name), message.content, "--- is already in phrases!")
+            if content in phrases:
+                print("[{0}] in '{1}':".format(datetime.now().time(), message.guild.name), content, "--- is already in phrases!")
                 return
 
-            phrases.append(message.content)
-            while len(phrases) > setting(message.guild.id).listmax:
+            phrases.append(content)
+            while len(phrases) > guilds[message.guild.id].listmax:
                 phrases.pop(0)
                     
-            with io.open("{0}-think.txt".format(message.guild.id), "w", encoding="utf-8") as phraselist:
-                for phrase in phrases:
-                    phraselist.write(phrase+"\n")
-
-            print("[{0}] New phrase added in '{1}':".format(datetime.now().time(), message.guild.name), message.content)
-            if setting(message.guild.id).log:
-                await message.guild.get_channel(setting(message.guild.id).lchannel).send("```New phrase added: "+message.content+"```")
+            write(message)
+            print("[{0}] New phrase added in '{1}':".format(datetime.now().time(), message.guild.name), content)
+            if guilds[message.guild.id].log:
+                await message.guild.get_channel(guilds[message.guild.id].lchannel).send("```New phrase added: "+content+"```")
             return
                 
-        if setting(message.guild.id).talk and random.randint(1, setting(message.guild.id).freq) == setting(message.guild.id).freq:
-            await message.channel.send(random.choice(phrases).replace("$line$", "\n").format(message.author.mention)) #replaces any flags with things like mentions or line breaks
+        if guilds[message.guild.id].talk and random.randint(1, guilds[message.guild.id].freq) == guilds[message.guild.id].freq:
+            await message.channel.send(random.choice(phrases).format(message.author.mention)) #replaces any flags with things like mentions or line breaks
 
 @bot.event
 async def on_command_error(ctx, err):
     if isinstance(err, commands.CheckFailure):
         await ctx.send("Invalid permissions!") 
     elif isinstance(err, commands.CommandNotFound):
-        await ctx.send("Command not found! Try `{0}help` for a list of proper commands.".format(setting(ctx.guild.id).prefix))
+        await ctx.send("Command not found! Try `{0}help` for a list of proper commands.".format(guilds[ctx.guild.id].prefix))
     elif isinstance(err, commands.MissingRequiredArgument):
         await ctx.send("This command requires more arguments!")
 
@@ -171,23 +145,21 @@ async def moth(ctx):
 
 @bot.command()
 async def help(ctx):
-    await ctx.send("PREFIX: {0} or ping\nCommands are listed here: https://github.com/kurpingspace2/kractl/wiki/Commands".format(setting(ctx.guild.id).prefix))
+    await ctx.send("PREFIX: {0} or ping\nCommands are listed here: https://github.com/kurpingspace2/kractl/wiki/Commands".format(guilds[ctx.guild.id].prefix))
 
 @bot.command()
 @commands.check(admin)
 async def speak(ctx):
-    setting(ctx.guild.id).talk = True
-    changesetting(ctx, 0, 1)
-    with io.open("{0}-think.txt".format(ctx.guild.id), encoding="utf-8") as phraselist:
-        phrases = [line for line in phraselist.readlines()]
-    await ctx.send(random.choice(phrases).replace("$line$", "\n").format(ctx.author.mention))
+    guilds[ctx.guild.id].talk = True
+    write(ctx)
+    await ctx.send(random.choice(guilds[ctx.guild.id].phrases).format(ctx.author.mention))
     await ctx.message.delete()
 
 @bot.command()
 async def shutup(ctx):
     if await admin(ctx):
-        setting(ctx.guild.id).talk = False
-        changesetting(ctx, 0, 0)
+        guilds[ctx.guild.id].talk = False
+        write(ctx)
         await ctx.send("Okay... :(")
     else:
         await ctx.send("No >:(")
@@ -196,8 +168,8 @@ async def shutup(ctx):
 @commands.check(admin)
 async def prefix(ctx, newprefix):
     if len(newprefix) == 1 and newprefix in ":;~-+=.,!$&^?":
-        setting(ctx.guild.id).prefix = newprefix
-        changesetting(ctx, 1, newprefix)
+        guilds[ctx.guild.id].prefix = newprefix
+        write(ctx)
         await ctx.send("Prefix set to: {0}".format(newprefix))
     else:
         await ctx.send("Invalid prefix! Avaliable prefixes: `:;~-+=.,!$&^?`")
@@ -206,7 +178,7 @@ async def prefix(ctx, newprefix):
 @commands.check(owner)
 async def adminset(ctx, role):
     if role == "?":
-        await ctx.send("Admin role is: "+ctx.guild.get_role(setting(ctx.guild.id).adminrole).mention)
+        await ctx.send("Admin role is: "+ctx.guild.get_role(guilds[ctx.guild.id].adminrole).mention)
         return
     try:
         role = int(role.strip("<@&>"))
@@ -216,15 +188,15 @@ async def adminset(ctx, role):
     if ctx.guild.get_role(role) == None:
         await ctx.send("This role does not exist!")
         return
-    setting(ctx.guild.id).adminrole = role
-    changesetting(ctx, 2, role)
+    guilds[ctx.guild.id].adminrole = role
+    write(ctx)
     await ctx.send("Admin role set to: {0}".format(ctx.guild.get_role(role).mention))
 
 @bot.command()
 @commands.check(admin) 
 async def freq(ctx, freq):
     if freq == "?":
-        await ctx.send("Frequency: 1/{0}".format(setting(ctx.guild.id).freq))
+        await ctx.send("Frequency: 1/{0}".format(guilds[ctx.guild.id].freq))
         return
     try:
         freq = int(freq)
@@ -232,8 +204,8 @@ async def freq(ctx, freq):
         await ctx.send("Please input an integer!")
         return
     if freq > 0:
-        setting(ctx.guild.id).freq = freq
-        changesetting(ctx, 3, freq)
+        guilds[ctx.guild.id]["freq"] = freq
+        write(ctx)
         await ctx.send("Frequency set to 1/{0}!".format(freq))
     else:
         await ctx.send("Please input a number higher than `0`!")
@@ -242,7 +214,7 @@ async def freq(ctx, freq):
 @commands.check(admin) 
 async def whitelist(ctx, flag, *args):
     if flag == "l":
-        await ctx.send("Whitelisted channels: "+str(" ".join([ctx.guild.get_channel(textchannel).mention for textchannel in setting(ctx.guild.id).whitelisted])))
+        await ctx.send("Whitelisted channels: "+str(" ".join([ctx.guild.get_channel(textchannel).mention for textchannel in guilds[ctx.guild.id].whitelisted])))
         return
     try:
         channel = int(args[0].strip("<#>"))
@@ -255,19 +227,19 @@ async def whitelist(ctx, flag, *args):
     if flag == "a":
         if ctx.guild.get_channel(channel) == None:
             await ctx.send("This channel does not exist!")
-        elif channel in setting(ctx.guild.id).whitelisted:
+        elif channel in guilds[ctx.guild.id].whitelisted:
             await ctx.send("This channel is already whitelisted!")
         else:
-            setting(ctx.guild.id).whitelisted.append(channel)
-            changesetting(ctx, 4, setting(ctx.guild.id).whitelisted)
+            guilds[ctx.guild.id].whitelisted.append(channel)
+            write(ctx)
             await ctx.send("Added channel to whitelist!")
     elif flag == "rm":
         try:
-            setting(ctx.guild.id).whitelisted.remove(channel)
+            guilds[ctx.guild.id].whitelisted.remove(channel)
         except ValueError:
             await ctx.send("Could not find that in the whitelist!")
             return
-        changesetting(ctx, 4, setting(ctx.guild.id).whitelisted)
+        write(ctx)
         await ctx.send("Channel removed!")
     else:
         await ctx.send("Unknown flag! Flags are: `a, rm, l`")
@@ -276,8 +248,8 @@ async def whitelist(ctx, flag, *args):
 @commands.check(admin) 
 async def log(ctx, flag, *args):
     if flag == "n":
-        setting(ctx.guild.id).log = False
-        changesetting(ctx, 5, 0)
+        guilds[ctx.guild.id].log = False
+        write(ctx)
         await ctx.send("No-longer logging phrases!")
         return
     try:
@@ -292,7 +264,7 @@ async def log(ctx, flag, *args):
         if ctx.guild.get_channel(channel) == None:
             await ctx.send("This channel does not exist!")
             return
-        elif channel in setting(ctx.guild.id).whitelisted:
+        elif channel in guilds[ctx.guild.id].whitelisted:
             await ctx.send("It is not recommended to output logs in a whitelisted channel. And it's not as funny. React above to continue.")
         else:
             await ctx.send("It's not as funny when you log phrases. React above to continue.")
@@ -304,10 +276,9 @@ async def log(ctx, flag, *args):
         except asyncio.TimeoutError:
             await ctx.send("Thank you for not logging phrases!")
         else:
-            setting(ctx.guild.id).log = True
-            setting(ctx.guild.id).lchannel = channel
-            changesetting(ctx, 5, "1")
-            changesetting(ctx, 6, channel)
+            guilds[ctx.guild.id].log = True
+            guilds[ctx.guild.id].lchannel = channel
+            write(ctx)
             await ctx.send("Logging channel set!")
             await ctx.guild.get_channel(channel).send("```Logs will now appear in this channel. Happy monitoring!```")
     else:
@@ -316,8 +287,7 @@ async def log(ctx, flag, *args):
 @bot.command()
 @commands.check(admin) 
 async def list(ctx, flag, *args):
-    with io.open("{0}-think.txt".format(ctx.guild.id), encoding="utf-8") as phraselist:
-        phrases = [line for line in phraselist.readlines()]
+    phrases = guilds[ctx.guild.id].phrases
     if len(args) == 0:
         await ctx.send("This command requires more arguments!")
         return
@@ -326,7 +296,7 @@ async def list(ctx, flag, *args):
         clusters = []
         for index, phrase in enumerate(phrases):
             previous = cluster.copy()
-            cluster.append("{0}: ".format(index+1)+phrase)
+            cluster.append("{0}: ".format(index+1)+phrase+"\n")
             if len("```"+"".join(cluster)+"```") > 2000:
                 clusters.append("```"+"".join(previous)+"```")
                 cluster = ["{0}: ".format(index+1)+phrase]
@@ -363,14 +333,14 @@ async def list(ctx, flag, *args):
                 await ctx.send("`{0}` isn't an integer".format(index))
         
     elif flag == "a":
-        phrases.append(args[0]+"\n")
-        while len(phrases) > setting(ctx.guild.id).listmax:
+        phrases.append(args[0].strip())
+        while len(phrases) > guilds[ctx.guild.id].listmax:
             phrases.pop(0)
         await ctx.send("Added phrase!")
         
     elif flag == "max":
         if args[0] == "?":
-            await ctx.send("List maximum is: `"+str(setting(ctx.guild.id).listmax)+"`")
+            await ctx.send("List maximum is: `"+str(guilds[ctx.guild.id].listmax)+"`")
             return
         try:
             maximum = int(args[0])
@@ -378,15 +348,13 @@ async def list(ctx, flag, *args):
             await ctx.send("Please input an integer!")
             return
         if maximum > 4:
-            setting(ctx.guild.id).listmax = maximum
-            changesetting(ctx, 7, maximum)
+            guilds[ctx.guild.id].listmax = maximum
             await ctx.send("List maximum set to: `"+str(maximum)+"`")
         else:
             await ctx.send("Please input a number higher than `4`")
             
     else:
         await ctx.send("Unknown flag! Flags are: `l, a, rm, max`")
-    with io.open("{0}-think.txt".format(ctx.guild.id), "w", encoding="utf-8") as phraselist:
-        phraselist.writelines(phrases)
+    write(ctx)
         
-bot.run("") #insert the bot token there as str
+bot.run("Njg4NTA0NDgwMzY2MzI5OTk1.Xrqomg.PVusxDzDb6FAgdI6RQNfKy8R90Y") #insert the bot token there as str
