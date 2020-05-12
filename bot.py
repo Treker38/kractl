@@ -204,7 +204,7 @@ async def freq(ctx, freq):
         await ctx.send("Please input an integer!")
         return
     if freq > 0:
-        guilds[ctx.guild.id]freq = freq
+        guilds[ctx.guild.id].freq = freq
         write(ctx)
         await ctx.send("Frequency set to 1/{0}!".format(freq))
     else:
