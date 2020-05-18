@@ -39,10 +39,6 @@ def write(ctx):
     with open(str(ctx.guild.id)+".json", "w") as jfile:
         json.dump(guilds[ctx.guild.id].__dict__, jfile)
 
-@bot.check
-async def globally_block_dms(ctx):
-    return ctx.guild is not None
-
 async def admin(ctx):
     if ctx.author.top_role >= ctx.guild.get_role(guilds[ctx.guild.id].adminrole):
         return True
@@ -52,6 +48,10 @@ async def owner(ctx):
     if ctx.author.id == ctx.guild.owner.id:
         return True
     return False
+
+@bot.check
+async def globally_block_dms(ctx):
+    return ctx.guild is not None # this is kinda useless but whatever
 
 @bot.event
 async def on_ready():
@@ -63,19 +63,19 @@ async def on_ready():
         except FileNotFoundError:
             createdefault(guild)
             print("Remade files for:", bot.get_guild(guild).name)
-    print('Here we go again {0.user}'.format(bot))
+    print(f"Here we go again {bot.user}")
 
 @bot.event
 async def on_guild_join(guild):
     createdefault(guild)
-    print("[{0}] Joined server: '".format(datetime.now().time())+guild.name+"' and created files!")
-    await guild.get_channel(guilds[guild.id].lchannel).send("Hi, i'm {0}! Please use `-adminset` to set the admin role and `-prefix` to change my prefix! Additionally, you can mention me or use the prefix to start commands! Use {0} help or `-help` for more info.".format(bot.user.mention))
+    print(f"[{datetime.now().time()}] Joined server: '{guild.name}' and created files!")
+    await guild.get_channel(guilds[guild.id].lchannel).send(f"Hi, i'm {bot.user.mention}! Please use `-adminset` to set the admin role and `-prefix` to change my prefix! Additionally, you can mention me or use the prefix to start commands! Use {bot.user.mention} help or `-help` for more info.")
 
 @bot.event
 async def on_guild_remove(guild):
     os.remove(str(guild.id)+".json")
     del guilds[guild.id] #not sure if removing the class from the dictionary will actually remove  the class from memory, but who knows.
-    print("[{0}] Left server '".format(datetime.now().time())+guild.name+"' ;(")
+    print(f"[{datetime.now().time()}] Left server '{guild.name}' ;(")
 
 @bot.event
 async def on_message(message):
@@ -103,7 +103,7 @@ async def on_message(message):
                 content = "_ _"
                     
             if content in phrases:
-                print("[{0}] in '{1}':".format(datetime.now().time(), message.guild.name), content, "--- is already in phrases!")
+                print(f"[{datetime.now().time()}] in '{message.guild.name}': {content} --- is already in phrases!")
                 return
 
             phrases.append(content)
@@ -111,20 +111,18 @@ async def on_message(message):
                 phrases.pop(0)
                     
             write(message)
-            print("[{0}] New phrase added in '{1}':".format(datetime.now().time(), message.guild.name), content)
+            print(f"[{datetime.now().time()}] New phrase added in '{message.guild.name}':", content)
             if guilds[message.guild.id].log:
                 await message.guild.get_channel(guilds[message.guild.id].lchannel).send("```New phrase added: "+content+"```")
             return
                 
         if guilds[message.guild.id].talk and random.randint(1, guilds[message.guild.id].freq) == guilds[message.guild.id].freq:
-            await message.channel.send(random.choice(phrases).format(message.author.mention)) #replaces any flags with things like mentions or line breaks
+            await message.channel.send(random.choice(phrases).format(message.author.mention)) #replaces any flags with things like mentions 
 
 @bot.event
 async def on_command_error(ctx, err):
     if isinstance(err, commands.CheckFailure):
         await ctx.send("Invalid permissions!") 
-    elif isinstance(err, commands.CommandNotFound):
-        await ctx.send("Command not found! Try `{0}help` for a list of proper commands.".format(guilds[ctx.guild.id].prefix))
     elif isinstance(err, commands.MissingRequiredArgument):
         await ctx.send("This command requires more arguments!")
 
@@ -146,7 +144,7 @@ async def moth(ctx):
 
 @bot.command()
 async def help(ctx):
-    await ctx.send("PREFIX: {0} or ping\nCommands are listed here: https://github.com/kurpingspace2/kractl/wiki/Commands".format(guilds[ctx.guild.id].prefix))
+    await ctx.send(f"PREFIX: {guilds[ctx.guild.id].prefix} or ping\nCommands are listed here: https://github.com/kurpingspace2/kractl/wiki/Commands")
 
 @bot.command()
 @commands.check(admin)
@@ -171,7 +169,7 @@ async def prefix(ctx, newprefix):
     if len(newprefix) == 1 and newprefix in ":;~-+=.,!$&^?[]'%£":
         guilds[ctx.guild.id].prefix = newprefix
         write(ctx)
-        await ctx.send("Prefix set to: {0}".format(newprefix))
+        await ctx.send("Prefix set to: "+newprefix)
     else:
         await ctx.send("Invalid prefix! Avaliable prefixes: `:;~-+=.,!$&^?[]'%£`")
 
@@ -191,13 +189,13 @@ async def adminset(ctx, role):
         return
     guilds[ctx.guild.id].adminrole = role
     write(ctx)
-    await ctx.send("Admin role set to: {0}".format(ctx.guild.get_role(role).mention))
+    await ctx.send("Admin role set to: "+ctx.guild.get_role(role).mention)
 
 @bot.command()
 @commands.check(admin) 
 async def freq(ctx, freq):
     if freq == "?":
-        await ctx.send("Frequency: 1/{0}".format(guilds[ctx.guild.id].freq))
+        await ctx.send("Frequency: 1/"+str(guilds[ctx.guild.id].freq))
         return
     try:
         freq = int(freq)
@@ -207,7 +205,7 @@ async def freq(ctx, freq):
     if freq > 0:
         guilds[ctx.guild.id].freq = freq
         write(ctx)
-        await ctx.send("Frequency set to 1/{0}!".format(freq))
+        await ctx.send("Frequency set to 1/"+str(freq))
     else:
         await ctx.send("Please input a number higher than `0`!")
 
@@ -269,9 +267,9 @@ async def log(ctx, flag, *args):
             await ctx.send("It is not recommended to output logs in a whitelisted channel. And it's not as funny. React above to continue.")
         else:
             await ctx.send("It's not as funny when you log phrases. React above to continue.")
-        await ctx.message.add_reaction(u"\U0001F44D")
+        await ctx.message.add_reaction("👍")
         def check(reaction, user):
-            return user == ctx.author and str(reaction.emoji) == u"\U0001F44D"
+            return user == ctx.author and str(reaction.emoji) == "👍"
         try:
             reaction, user = await bot.wait_for('reaction_add', timeout=10.0, check=check) #i have no clue what is happening here
         except asyncio.TimeoutError:
@@ -310,7 +308,7 @@ async def list(ctx, flag, *args):
             return
 
         if args[0] == "?":
-            await ctx.send("`{0}` clusters\n`{1}` phrases".format(len(clusters), len(phrases)))
+            await ctx.send(f"`{len(clusters)}` clusters\n`{len(phrases)}` phrases")
             return
         try:
             await ctx.send(clusters[int(args[0])-1])
@@ -329,9 +327,9 @@ async def list(ctx, flag, *args):
                     phrases.pop(index)
                     await ctx.send("Deleted phrase: `"+phrase+"`")
                 except IndexError:
-                    await ctx.send("Cannot find `{0}` in the list!".format(index))
+                    await ctx.send(f"Cannot find `{index}` in the list!")
             except ValueError:
-                await ctx.send("`{0}` isn't an integer".format(index))
+                await ctx.send(f"`{index}` isn't an integer")
         
     elif flag == "a":
         phrases.append(args[0].strip())
@@ -357,5 +355,5 @@ async def list(ctx, flag, *args):
     else:
         await ctx.send("Unknown flag! Flags are: `l, a, rm, max`")
     write(ctx)
-        
+
 bot.run("") #insert the bot token there as str
