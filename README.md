@@ -7,3 +7,5 @@ https://github.com/kurpingspace2/kractl/wiki
 It should work out of the box. Built on python 3.8, works and tested on 3.7.
 
 It's recommended to create a back-up of your .json files, since anything can happen.
+
+Support discord: https://discord.gg/CXnE5MX
