@@ -26,14 +26,13 @@ class Server(object):
         self.__dict__ = json.load(j)
 
 def createdefault(guild):
-    disguild = bot.get_guild(guild)
     with open(str(guild.id)+".json", "w") as jfile:
         try:
-            json.dump({"talk":True, "prefix":"-", "adminrole":disguild.default_role.id, "freq":20, "whitelisted":[disguild.system_channel.id], "log":False, "lchannel":disguild.system_channel.id, "listmax":80, "phrases":["Hi!"]}, jfile)
+            json.dump({"talk":True, "prefix":"-", "adminrole":guild.default_role.id, "freq":20, "whitelisted":[guild.system_channel.id], "log":False, "lchannel":guild.system_channel.id, "listmax":80, "phrases":["Hi!"]}, jfile)
         except: #if there is no system channel
-            json.dump({"talk":True, "prefix":"-", "adminrole":disguild.default_role.id, "freq":20, "whitelisted":[disguild.text_channels[0].id], "log":False, "lchannel":disguild.text_channels[0].id, "listmax":80, "phrases":["Hi!"]}, jfile)
+            json.dump({"talk":True, "prefix":"-", "adminrole":guild.default_role.id, "freq":20, "whitelisted":[guild.text_channels[0].id], "log":False, "lchannel":guild.text_channels[0].id, "listmax":80, "phrases":["Hi!"]}, jfile)
     with open(str(guild.id)+".json") as jfile:
-        guilds[guild] = Server(jfile)
+        guilds[guild.id] = Server(jfile)
 
 def write(ctx):
     with open(str(ctx.guild.id)+".json", "w") as jfile:
@@ -55,14 +54,14 @@ async def globally_block_dms(ctx):
 
 @bot.event
 async def on_ready():
-    servers = [guild.id for guild in await bot.fetch_guilds().flatten()]
+    servers = [guild for guild in await bot.fetch_guilds().flatten()]
     for guild in servers:
         try:
-            with io.open(str(guild)+".json", encoding="utf-8") as jfile:
-                guilds[guild] = Server(jfile)
+            with io.open(str(guild.id)+".json", encoding="utf-8") as jfile:
+                guilds[guild.id] = Server(jfile)
         except FileNotFoundError:
             createdefault(guild)
-            print("Remade files for:", bot.get_guild(guild).name)
+            print("Remade files for:", guild.name)
     print(f"Here we go again {bot.user}")
 
 @bot.event
@@ -356,4 +355,6 @@ async def list(ctx, flag, *args):
         await ctx.send("Unknown flag! Flags are: `l, a, rm, max`")
     write(ctx)
 
-bot.run("") #insert the bot token there as str
+with open("token.json") as jfile:
+    token = json.load(jfile)
+bot.run(token["token"])
