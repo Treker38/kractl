@@ -27,12 +27,12 @@ class Server(object):
 
 def createdefault(guild):
     disguild = bot.get_guild(guild)
-    with open(str(guild)+".json", "w") as jfile:
+    with open(str(guild.id)+".json", "w") as jfile:
         try:
             json.dump({"talk":True, "prefix":"-", "adminrole":disguild.default_role.id, "freq":20, "whitelisted":[disguild.system_channel.id], "log":False, "lchannel":disguild.system_channel.id, "listmax":80, "phrases":["Hi!"]}, jfile)
         except: #if there is no system channel
             json.dump({"talk":True, "prefix":"-", "adminrole":disguild.default_role.id, "freq":20, "whitelisted":[disguild.text_channels[0].id], "log":False, "lchannel":disguild.text_channels[0].id, "listmax":80, "phrases":["Hi!"]}, jfile)
-    with open(str(guild)+".json") as jfile:
+    with open(str(guild.id)+".json") as jfile:
         guilds[guild] = Server(jfile)
 
 def write(ctx):
