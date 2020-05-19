@@ -11,7 +11,7 @@ import json
 import io
 
 async def determine_prefix(bot, msg):
-    prefix = "-"
+    prefix = dpfx
     if msg.guild: #if message is in a guild
         prefix = guilds[msg.guild.id].prefix
     return commands.when_mentioned_or(prefix)(bot, msg)
@@ -20,17 +20,18 @@ bot.remove_command('help') #removes the prebuilt help command
 
 messages = ["God fucking damn it, {0}", "Fuck you, {0}", "Leave me alone, I swear to god. You're so fucking annoying and it pisses me off, {0}", "FUCK OFF! {0}", "Pleeease bother someone else oh my fucking god, {0}", "I hope you actually fucking die, {0}"]
 guilds = {}
+dpfx = "-" #just so i can change the default prefix with ease
 
 class Server(object):
     def __init__(self, j):
         self.__dict__ = json.load(j)
 
-def createdefault(guild):
+def createdefault(guild): #change default prefix to ^ as soon as possible
     with open(str(guild.id)+".json", "w") as jfile:
         try:
-            json.dump({"talk":True, "prefix":"-", "adminrole":guild.default_role.id, "freq":20, "whitelisted":[guild.system_channel.id], "log":False, "lchannel":guild.system_channel.id, "listmax":80, "phrases":["Hi!"]}, jfile)
+            json.dump({"talk":True, "prefix":dpfx, "adminrole":guild.default_role.id, "freq":20, "whitelisted":[guild.system_channel.id], "log":False, "lchannel":guild.system_channel.id, "listmax":80, "learn":10, "phrases":["Hi!"]}, jfile)
         except: #if there is no system channel
-            json.dump({"talk":True, "prefix":"-", "adminrole":guild.default_role.id, "freq":20, "whitelisted":[guild.text_channels[0].id], "log":False, "lchannel":guild.text_channels[0].id, "listmax":80, "phrases":["Hi!"]}, jfile)
+            json.dump({"talk":True, "prefix":dpfx, "adminrole":guild.default_role.id, "freq":20, "whitelisted":[guild.text_channels[0].id], "log":False, "lchannel":guild.text_channels[0].id, "listmax":80, "learn":10, "phrases":["Hi!"]}, jfile)
     with open(str(guild.id)+".json") as jfile:
         guilds[guild.id] = Server(jfile)
 
@@ -55,6 +56,7 @@ async def globally_block_dms(ctx):
 @bot.event
 async def on_ready():
     servers = [guild for guild in await bot.fetch_guilds().flatten()]
+    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"{len(servers)} servers"))
     for guild in servers:
         try:
             with io.open(str(guild.id)+".json", encoding="utf-8") as jfile:
@@ -69,12 +71,16 @@ async def on_guild_join(guild):
     createdefault(guild)
     print(f"[{datetime.now().time()}] Joined server: '{guild.name}' and created files!")
     await guild.get_channel(guilds[guild.id].lchannel).send(f"Hi, i'm {bot.user.mention}! Please use `-adminset` to set the admin role and `-prefix` to change my prefix! Additionally, you can mention me or use the prefix to start commands! Use {bot.user.mention} help or `-help` for more info.")
+    servers = [guild for guild in await bot.fetch_guilds().flatten()]
+    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"{len(servers)} servers"))
 
 @bot.event
 async def on_guild_remove(guild):
     os.remove(str(guild.id)+".json")
     del guilds[guild.id] #not sure if removing the class from the dictionary will actually remove  the class from memory, but who knows.
     print(f"[{datetime.now().time()}] Left server '{guild.name}' ;(")
+    servers = [guild for guild in await bot.fetch_guilds().flatten()]
+    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"{len(servers)} servers"))
 
 @bot.event
 async def on_message(message):
@@ -87,7 +93,7 @@ async def on_message(message):
             await bot.process_commands(message)
         return #don't want it to continue after running a command
     if message.channel.id in guilds[message.guild.id].whitelisted:
-        if random.randint(1,10) == 10:
+        if random.randint(1, guilds[message.guild.id].learn) == guilds[message.guild.id].learn:
             if "<@" in content:
                 content = re.sub("<[^>]+>", "{0}", content)
 
@@ -134,14 +140,6 @@ async def hug(ctx):
     await ctx.send(":flushed:")
 
 @bot.command()
-async def lamp(ctx):
-    await ctx.send("Lämp https://tenor.com/view/mothpit-gif-4889422")
-
-@bot.command()
-async def moth(ctx):
-    await ctx.send("https://media.discordapp.net/attachments/660725993886973967/665234015825035274/tumblr_inline_pigyc2pVCu1t2g1uk_500.gif")
-
-@bot.command()
 async def help(ctx):
     await ctx.send(f"PREFIX: {guilds[ctx.guild.id].prefix} or ping\nCommands are listed here: https://github.com/kurpingspace2/kractl/wiki/Commands \nNeed support? https://discord.gg/CXnE5MX")
 
@@ -165,12 +163,12 @@ async def shutup(ctx):
 @bot.command()
 @commands.check(admin)
 async def prefix(ctx, newprefix):
-    if len(newprefix) == 1 and newprefix in ":;~-+=.,!$&^?[]'%£":
+    if len(newprefix) == 1 and newprefix not in "qwertyuiopasdfghjklzxcvbnm1234567890*_~`{<@\\/":
         guilds[ctx.guild.id].prefix = newprefix
         write(ctx)
         await ctx.send("Prefix set to: "+newprefix)
     else:
-        await ctx.send("Invalid prefix! Avaliable prefixes: `:;~-+=.,!$&^?[]'%£`")
+        await ctx.send("Invalid prefix! Unavaliable prefixes: ```qwertyuiopasdfghjklzxcvbnm1234567890*_~`{<@\\/```")
 
 @bot.command()
 @commands.check(owner)
@@ -192,21 +190,33 @@ async def adminset(ctx, role):
 
 @bot.command()
 @commands.check(admin) 
-async def freq(ctx, freq):
-    if freq == "?":
-        await ctx.send("Frequency: 1/"+str(guilds[ctx.guild.id].freq))
+async def freq(ctx, flag, *args):
+    if flag == "?":
+        await ctx.send(f"Chance to speak: 1/{guilds[ctx.guild.id].freq}\nChance to learn: 1/{guilds[ctx.guild.id].learn}")
+        return
+    try:
+        freq = args[0]
+    except IndexError:
+        await ctx.send("This command requires another argument!")
         return
     try:
         freq = int(freq)
     except ValueError:
         await ctx.send("Please input an integer!")
         return
-    if freq > 0:
+    if not freq > 0:
+        await ctx.send("Please input a number higher than `0`!")
+        return
+    if flag == "s":
         guilds[ctx.guild.id].freq = freq
         write(ctx)
-        await ctx.send("Frequency set to 1/"+str(freq))
+        await ctx.send("Speaking frequency set to 1/"+str(freq))
+    elif flag == "l":
+        guilds[ctx.guild.id].learn = freq
+        write(ctx)
+        await ctx.send("Learning frequency set to 1/"+str(freq))
     else:
-        await ctx.send("Please input a number higher than `0`!")
+        await ctx.send("Unknown flag, flags are `s, l, ?`")
 
 @bot.command()
 @commands.check(admin) 
@@ -284,43 +294,46 @@ async def log(ctx, flag, *args):
 
 @bot.command()
 @commands.check(admin) 
-async def list(ctx, flag, *args):
+async def l(ctx, *args):
     phrases = guilds[ctx.guild.id].phrases
-    if len(args) == 0:
-        await ctx.send("This command requires more arguments!")
-        return
-    if flag == "l":
-        cluster = []
-        clusters = []
-        for index, phrase in enumerate(phrases):
-            previous = cluster.copy()
-            cluster.append("{0}: ".format(index+1)+phrase+"\n")
-            if len("```"+"".join(cluster)+"```") > 2000:
-                clusters.append("```"+"".join(previous)+"```")
-                cluster = ["{0}: ".format(index+1)+phrase]
-        if cluster != []:
-            clusters.append("```"+"".join(cluster)+"```") #adds the remainder
+    flag = args[0]
+    args = list(args)
+    args.pop(0)
+    cluster = []
+    clusters = []
+    for index, phrase in enumerate(phrases):
+        previous = cluster.copy()
+        cluster.append("{0}: ".format(index)+phrase+"\n")
+        if len("```"+"".join(cluster)+"```") > 2000:
+            clusters.append("```"+"".join(previous)+"```")
+            cluster = ["{0}: ".format(index)+phrase]
+    if cluster != []:
+        clusters.append("```"+"".join(cluster)+"```") #adds the remainder
 
-        if args[0] == "all":
-            for cluster in clusters:
-                await ctx.send(cluster)
-            return
-
-        if args[0] == "?":
-            await ctx.send(f"`{len(clusters)}` clusters\n`{len(phrases)}` phrases")
-            return
+    try:
+        flag = int(flag)
         try:
-            await ctx.send(clusters[int(args[0])-1])
-        except ValueError:
-            await ctx.send("Please give `a`, `?` or an integer!")
+            await ctx.send(clusters[flag])
         except IndexError:
             await ctx.send("This does cluster does not exist!")
         return
-    
+    except ValueError:
+        None
+
+    if flag == "?":
+        await ctx.send(f"`{len(clusters)}` clusters\n`{len(phrases)}` phrases")
+
+    elif flag == "all":
+        for cluster in clusters:
+            await ctx.send(cluster)
+
+    elif len(args) == 0:
+        await ctx.send("This subcommand requires another argument!")
+
     elif flag == "rm":
         for index in args:
             try:
-                index = int(index)-1
+                index = int(index)
                 try:
                     phrase = phrases[index] #instead of saying deleted first, it will delete first, then if it fails, it will show an error.
                     phrases.pop(index)
@@ -331,10 +344,10 @@ async def list(ctx, flag, *args):
                 await ctx.send(f"`{index}` isn't an integer")
         
     elif flag == "a":
-        phrases.append(args[0].strip())
+        phrases.append(" ".join(args).strip())
         while len(phrases) > guilds[ctx.guild.id].listmax:
             phrases.pop(0)
-        await ctx.send("Added phrase!")
+        await ctx.send(f"""Added phrase: {" ".join(args).strip()}""")
         
     elif flag == "max":
         if args[0] == "?":
@@ -345,14 +358,14 @@ async def list(ctx, flag, *args):
         except ValueError:
             await ctx.send("Please input an integer!")
             return
-        if maximum > 4:
+        if maximum > 0:
             guilds[ctx.guild.id].listmax = maximum
             await ctx.send("List maximum set to: `"+str(maximum)+"`")
         else:
-            await ctx.send("Please input a number higher than `4`")
-            
+            await ctx.send("Please input a number higher than `0`")
+
     else:
-        await ctx.send("Unknown flag! Flags are: `l, a, rm, max`")
+        await ctx.send("Unknown flag! Flags are: `all, ?, p, a, rm, max` or an integer")
     write(ctx)
 
 with open("token.json") as jfile:
