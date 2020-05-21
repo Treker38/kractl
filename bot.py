@@ -29,9 +29,9 @@ class Server(object):
 def createdefault(guild): #change default prefix to ^ as soon as possible
     with open(str(guild.id)+".json", "w") as jfile:
         try:
-            json.dump({"talk":True, "prefix":dpfx, "adminrole":guild.default_role.id, "freq":20, "whitelisted":[guild.system_channel.id], "log":False, "lchannel":guild.system_channel.id, "listmax":80, "learn":10, "phrases":["Hi!"]}, jfile)
+            json.dump({"talk":True, "prefix":dpfx, "adminrole":guild.default_role.id, "freq":20, "whitelisted":[], "log":False, "lchannel":guild.system_channel.id, "listmax":80, "learn":10, "phrases":["Hi!"]}, jfile)
         except: #if there is no system channel
-            json.dump({"talk":True, "prefix":dpfx, "adminrole":guild.default_role.id, "freq":20, "whitelisted":[guild.text_channels[0].id], "log":False, "lchannel":guild.text_channels[0].id, "listmax":80, "learn":10, "phrases":["Hi!"]}, jfile)
+            json.dump({"talk":True, "prefix":dpfx, "adminrole":guild.default_role.id, "freq":20, "whitelisted":[], "log":False, "lchannel":guild.text_channels[0].id, "listmax":80, "learn":10, "phrases":["Hi!"]}, jfile)
     with open(str(guild.id)+".json") as jfile:
         guilds[guild.id] = Server(jfile)
 
@@ -70,7 +70,18 @@ async def on_ready():
 async def on_guild_join(guild):
     createdefault(guild)
     print(f"[{datetime.now().time()}] Joined server: '{guild.name}' and created files!")
-    await guild.get_channel(guilds[guild.id].lchannel).send(f"Hi, i'm {bot.user.mention}! Please use `-adminset` to set the admin role and `-prefix` to change my prefix! Additionally, you can mention me or use the prefix to start commands! Use {bot.user.mention} help or `-help` for more info.")
+    welcome = f"""Hi, i'm {bot.user.mention}, I am a chatterbot! Please use `-adminset` to set the admin role and `-prefix` to change my prefix! Additionally, you can mention me or use the prefix to start commands! Use {bot.user.mention} help or `-help` for more info.
+        
+    **By inviting this bot to this server, @everyone on the server is *opting in* for their message content to be kept indefinetly onto a text file. *Message content can be deleted by it reaching it's maximum phrase limit, or the bot being kicked or by a special command***
+    Read more about this here: https://github.com/kurpingspace2/kractl/wiki/EULA
+        
+If you agree, that's great! Use the `-whitelist a #general` command to allow the bot to log some phrases and repeat them later on!"""
+    try:
+        await guild.get_channel(guilds[guild.id].lchannel).send(welcome)
+    except:
+        await guild.owner.create_dm()
+        await guild.owner.dm_channel.send("I didn't have access to speak in the system channel, so please forward this to the general chat or annoucements!")
+        await guild.owner.dm_channel.send(welcome)
     servers = [guild for guild in await bot.fetch_guilds().flatten()]
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"{len(servers)} servers"))
 
