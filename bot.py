@@ -72,7 +72,7 @@ async def on_guild_join(guild):
     print(f"[{datetime.now().time()}] Joined server: '{guild.name}' and created files!")
     welcome = f"""Hi, i'm {bot.user.mention}, I am a chatterbot! Please use `-adminset` to set the admin role and `-prefix` to change my prefix! Additionally, you can mention me or use the prefix to start commands! Use {bot.user.mention} help or `-help` for more info.
         
-    **By inviting this bot to this server, @everyone on the server is *opting in* for their message content to be kept indefinetly onto a text file. *Message content can be deleted by it reaching it's maximum phrase limit, or the bot being kicked or by a special command***
+    **By inviting this bot to this server, everyone on the server is *opting in* for their message content to be kept indefinetly onto a text file. *Message content can be deleted by it reaching it's maximum phrase limit, or the bot being kicked or by a special command***
     Read more about this here: https://github.com/kurpingspace2/kractl/wiki/EULA
         
 If you agree, that's great! Use the `-whitelist a #general` command to allow the bot to log some phrases and repeat them later on!"""
