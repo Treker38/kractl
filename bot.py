@@ -69,6 +69,8 @@ async def on_ready():
 @bot.event
 async def on_guild_join(guild):
     createdefault(guild)
+    servers = [guild for guild in await bot.fetch_guilds().flatten()]
+    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"{len(servers)} servers"))
     print(f"[{datetime.now().time()}] Joined server: '{guild.name}' and created files!")
     welcome = f"""Hi, i'm {bot.user.mention}, I am a chatterbot! Please use `-adminset` to set the admin role and `-prefix` to change my prefix! Additionally, you can mention me or use the prefix to start commands! Use {bot.user.mention} help or `-help` for more info.
         
@@ -82,8 +84,6 @@ If you agree, that's great! Use the `-whitelist a #general` command to allow the
         await guild.owner.create_dm()
         await guild.owner.dm_channel.send("I didn't have access to speak in the system channel, so please forward this to the general chat or annoucements!")
         await guild.owner.dm_channel.send(welcome)
-    servers = [guild for guild in await bot.fetch_guilds().flatten()]
-    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"{len(servers)} servers"))
 
 @bot.event
 async def on_guild_remove(guild):
@@ -98,12 +98,18 @@ async def on_message(message):
     phrases = guilds[message.guild.id].phrases
     content = message.content
     if message.author == bot.user:
+        if content.lower().endswith(("when", "when?")) and not content.startswith("Added phrase:"):
+            await message.channel.send("Alright, I'm gonna code that actually, brb.")
         return
     if content.startswith((":", ";", "~", "-", "+", "=", ".", ",", "!", "$", "&", "^", "?", "[", "]", "'", "%", "£", bot.user.mention, "".join(["<@!", str(bot.user.id), ">"]))): #ignores commands for every bot in a server, this isn't just brute-force
         if not content.startswith(guilds[message.guild.id].prefix+guilds[message.guild.id].prefix): #if the prefix is not called twice
             await bot.process_commands(message)
         return #don't want it to continue after running a command
     if message.channel.id in guilds[message.guild.id].whitelisted:
+        if content.lower().endswith(("when", "when?")):
+            await message.channel.send("When. You. Code. It.")
+        elif guilds[message.guild.id].talk and random.randint(1, guilds[message.guild.id].freq) == guilds[message.guild.id].freq:
+            await message.channel.send(random.choice(phrases).format(message.author.mention)) #replaces any flags with things like mentions 
         if random.randint(1, guilds[message.guild.id].learn) == guilds[message.guild.id].learn:
             if "<@" in content:
                 content = re.sub("<[^>]+>", "{0}", content)
@@ -130,10 +136,6 @@ async def on_message(message):
             print(f"[{datetime.now().time()}] New phrase added in '{message.guild.name}':", content)
             if guilds[message.guild.id].log:
                 await message.guild.get_channel(guilds[message.guild.id].lchannel).send("```New phrase added: "+content+"```")
-            return
-                
-        if guilds[message.guild.id].talk and random.randint(1, guilds[message.guild.id].freq) == guilds[message.guild.id].freq:
-            await message.channel.send(random.choice(phrases).format(message.author.mention)) #replaces any flags with things like mentions 
 
 @bot.event
 async def on_command_error(ctx, err):
@@ -312,24 +314,32 @@ async def l(ctx, *args):
     args.pop(0)
     cluster = []
     clusters = []
+    keyword = ""
+    try:
+        flag = int(flag)
+        keyword = args[0]
+    except:
+        if flag == "all":
+            try:
+                keyword = args[0]
+            except:
+                None
     for index, phrase in enumerate(phrases):
         previous = cluster.copy()
-        cluster.append("{0}: ".format(index)+phrase+"\n")
+        if keyword in phrase.lower():
+            cluster.append("{0}: ".format(index)+phrase+"\n")
         if len("```"+"".join(cluster)+"```") > 2000:
             clusters.append("```"+"".join(previous)+"```")
             cluster = ["{0}: ".format(index)+phrase]
     if cluster != []:
         clusters.append("```"+"".join(cluster)+"```") #adds the remainder
 
-    try:
-        flag = int(flag)
+    if isinstance(flag, int):
         try:
             await ctx.send(clusters[flag])
         except IndexError:
             await ctx.send("This does cluster does not exist!")
         return
-    except ValueError:
-        None
 
     if flag == "?":
         await ctx.send(f"`{len(clusters)}` clusters\n`{len(phrases)}` phrases")
