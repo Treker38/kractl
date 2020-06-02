@@ -55,9 +55,10 @@ async def globally_block_dms(ctx):
 
 @bot.event
 async def on_ready():
-    servers = [guild for guild in await bot.fetch_guilds().flatten()]
-    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"{len(servers)} servers"))
-    for guild in servers:
+    global totalguilds
+    totalguilds = [guild for guild in await bot.fetch_guilds().flatten()]
+    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"{len(totalguilds)} servers"))
+    for guild in totalguilds:
         try:
             with io.open(str(guild.id)+".json", encoding="utf-8") as jfile:
                 guilds[guild.id] = Server(jfile)
@@ -68,9 +69,10 @@ async def on_ready():
 
 @bot.event
 async def on_guild_join(guild):
+    global totalguilds
     createdefault(guild)
-    servers = [guild for guild in await bot.fetch_guilds().flatten()]
-    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"{len(servers)} servers"))
+    totalguilds += 1
+    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"{len(totalguilds)} servers"))
     print(f"[{datetime.now().time()}] Joined server: '{guild.name}' and created files!")
     welcome = f"""Hi, i'm {bot.user.mention}, I am a chatterbot! Please use `-adminset` to set the admin role and `-prefix` to change my prefix! Additionally, you can mention me or use the prefix to start commands! Use {bot.user.mention} help or `-help` for more info.
         
@@ -87,11 +89,12 @@ If you agree, that's great! Use the `-whitelist a #general` command to allow the
 
 @bot.event
 async def on_guild_remove(guild):
+    global totalguilds
     os.remove(str(guild.id)+".json")
     del guilds[guild.id] #not sure if removing the class from the dictionary will actually remove  the class from memory, but who knows.
     print(f"[{datetime.now().time()}] Left server '{guild.name}' ;(")
-    servers = [guild for guild in await bot.fetch_guilds().flatten()]
-    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"{len(servers)} servers"))
+    totalguilds -= 1
+    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"{len(totalguilds)} servers"))
 
 @bot.event
 async def on_message(message):
@@ -101,7 +104,7 @@ async def on_message(message):
         if content.lower().endswith(("when", "when?")) and not content.startswith("Added phrase:"):
             await message.channel.send("Alright, I'm gonna code that actually, brb.")
         return
-    if content.startswith((":", ";", "~", "-", "+", "=", ".", ",", "!", "$", "&", "^", "?", "[", "]", "'", "%", "£", bot.user.mention, "".join(["<@!", str(bot.user.id), ">"]))): #ignores commands for every bot in a server, this isn't just brute-force
+    if not content.startswith(tuple("qwertyuiopasdfghjklzxcvbnm1234567890*_~`{<@\\/")) or content.startswith((bot.user.mention, "".join(["<@!", str(bot.user.id), ">"]))): #ignores commands for every bot in a server, this isn't just brute-force
         if not content.startswith(guilds[message.guild.id].prefix+guilds[message.guild.id].prefix): #if the prefix is not called twice
             await bot.process_commands(message)
         return #don't want it to continue after running a command
@@ -111,16 +114,13 @@ async def on_message(message):
         elif guilds[message.guild.id].talk and random.randint(1, guilds[message.guild.id].freq) == guilds[message.guild.id].freq:
             await message.channel.send(random.choice(phrases).format(message.author.mention)) #replaces any flags with things like mentions 
         if random.randint(1, guilds[message.guild.id].learn) == guilds[message.guild.id].learn:
-            if "<@" in content:
-                content = re.sub("<[^>]+>", "{0}", content)
-
+            content = re.sub("<@[^>]+>", "{0}", content)
             content.replace("@everyone", "")
             content.replace("@here", "")
-                    
             if message.attachments != []:
                 content = content+" "+message.attachments[0].url
 
-            " ".join(message.content.split()) #removes double or more spaces
+            content = " ".join(content.split()) #removes double or more spaces
             if content == "" or content == "** **" or content == "*** ***": # these are all the same message basically, just a blank message.
                 content = "_ _"
                     
@@ -154,7 +154,7 @@ async def hug(ctx):
 
 @bot.command()
 async def help(ctx):
-    await ctx.send(f"PREFIX: {guilds[ctx.guild.id].prefix} or ping\nCommands are listed here: https://github.com/kurpingspace2/kractl/wiki/Commands \nNeed support? https://discord.gg/CXnE5MX")
+    await ctx.send(f"PREFIX: {guilds[ctx.guild.id].prefix} or ping\nCommands are listed here: https://github.com/kurpingspace2/kractl/wiki/Commands")
 
 @bot.command()
 @commands.check(admin)
