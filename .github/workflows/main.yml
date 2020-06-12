@@ -19,4 +19,4 @@ jobs:
       - name: pylint3-action
         uses: LakshitF/pylint3-action@v2
         with:
-          filename: bot.py
+          filename: 'bot.py'
