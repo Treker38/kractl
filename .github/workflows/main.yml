@@ -3,9 +3,9 @@ on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
-    name: A job to run pylint
+    name: pylint
     steps:
-    - name: Run Action Step
+    - name: run pylint
       id: pylint
       uses: LakshitF/pylint3-action@master
       with:
