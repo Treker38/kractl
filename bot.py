@@ -10,10 +10,8 @@ import os
 import json
 import io
 
-async def determine_prefix(bot, msg):
-    prefix = dpfx
-    if msg.guild: #if message is in a guild
-        prefix = guilds[msg.guild.id].prefix
+async def determine_prefix(bot, msg): #for some reason this just doesn't work unless it's in a definition
+    prefix = guilds[msg.guild.id].prefix
     return commands.when_mentioned_or(prefix)(bot, msg)
 bot = commands.Bot(command_prefix=determine_prefix)
 bot.remove_command('help') #removes the prebuilt help command
@@ -55,9 +53,10 @@ async def globally_block_dms(ctx):
 
 @bot.event
 async def on_ready():
-    global totalguilds
+    global GUILDS
     totalguilds = [guild for guild in await bot.fetch_guilds().flatten()]
-    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"{len(totalguilds)} servers"))
+    GUILDS = len(totalguilds)
+    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"{GUILDS} servers"))
     for guild in totalguilds:
         try:
             with io.open(str(guild.id)+".json", encoding="utf-8") as jfile:
@@ -69,10 +68,10 @@ async def on_ready():
 
 @bot.event
 async def on_guild_join(guild):
-    global totalguilds
+    global GUILDS
+    GUILDS += 1
+    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"{GUILDS} servers"))
     createdefault(guild)
-    totalguilds += 1
-    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"{len(totalguilds)} servers"))
     print(f"[{datetime.now().time()}] Joined server: '{guild.name}' and created files!")
     welcome = f"""Hi, i'm {bot.user.mention}, I am a chatterbot! Please use `-adminset` to set the admin role and `-prefix` to change my prefix! Additionally, you can mention me or use the prefix to start commands! Use {bot.user.mention} help or `-help` for more info.
         
@@ -89,31 +88,27 @@ If you agree, that's great! Use the `-whitelist a #general` command to allow the
 
 @bot.event
 async def on_guild_remove(guild):
-    global totalguilds
+    global GUILDS
+    GUILDS -= 1
+    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"{GUILDS} servers"))
     os.remove(str(guild.id)+".json")
     del guilds[guild.id] #not sure if removing the class from the dictionary will actually remove  the class from memory, but who knows.
     print(f"[{datetime.now().time()}] Left server '{guild.name}' ;(")
-    totalguilds -= 1
-    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"{len(totalguilds)} servers"))
 
 @bot.event
 async def on_message(message):
-    phrases = guilds[message.guild.id].phrases
-    content = message.content
-    if message.author == bot.user:
-        if content.lower().endswith(("when", "when?")) and not content.startswith("Added phrase:"):
-            await message.channel.send("Alright, I'm gonna code that actually, brb.")
+    if message.author == bot.user or message.guild == None:
         return
-    if not content.startswith(tuple("qwertyuiopasdfghjklzxcvbnm1234567890*_~`{<@\\/")) or content.startswith((bot.user.mention, "".join(["<@!", str(bot.user.id), ">"]))): #ignores commands for every bot in a server, this isn't just brute-force
+    content = message.content
+    if not content.startswith(tuple(":;~-+=.,!$&^?[]'%£")) or content.startswith((bot.user.mention, "".join(["<@!", str(bot.user.id), ">"]))): #ignores commands for every bot in a server, this isn't just brute-force
         if not content.startswith(guilds[message.guild.id].prefix+guilds[message.guild.id].prefix): #if the prefix is not called twice
             await bot.process_commands(message)
         return #don't want it to continue after running a command
     if message.channel.id in guilds[message.guild.id].whitelisted:
-        if content.lower().endswith(("when", "when?")):
-            await message.channel.send("When. You. Code. It.")
-        elif guilds[message.guild.id].talk and random.randint(1, guilds[message.guild.id].freq) == guilds[message.guild.id].freq:
+        phrases = guilds[message.guild.id].phrases
+        if guilds[message.guild.id].talk and random.randint(1, guilds[message.guild.id].freq) == guilds[message.guild.id].freq:
             await message.channel.send(random.choice(phrases).format(message.author.mention)) #replaces any flags with things like mentions 
-        if random.randint(1, guilds[message.guild.id].learn) == guilds[message.guild.id].learn:
+        elif random.randint(1, guilds[message.guild.id].learn) == guilds[message.guild.id].learn:
             content = re.sub("<@[^>]+>", "{0}", content)
             content.replace("@everyone", "")
             content.replace("@here", "")
@@ -121,8 +116,7 @@ async def on_message(message):
                 content = content+" "+message.attachments[0].url
 
             content = " ".join(content.split()) #removes double or more spaces
-            if content == "" or content == "** **" or content == "*** ***": # these are all the same message basically, just a blank message.
-                content = "_ _"
+            content = "_ _" if content == "" or content == "** **" or content == "*** ***" else content # these are all the same message basically, just a blank message.
                     
             if content in phrases:
                 print(f"[{datetime.now().time()}] in '{message.guild.name}': {content} --- is already in phrases!")
@@ -154,7 +148,7 @@ async def hug(ctx):
 
 @bot.command()
 async def help(ctx):
-    await ctx.send(f"PREFIX: {guilds[ctx.guild.id].prefix} or ping\nCommands are listed here: https://github.com/kurpingspace2/kractl/wiki/Commands")
+    await ctx.send(f"PREFIX: `{guilds[ctx.guild.id].prefix}` or ping\nCommands are listed here: https://github.com/kurpingspace2/kractl/wiki/Commands")
 
 @bot.command()
 @commands.check(admin)
@@ -176,12 +170,12 @@ async def shutup(ctx):
 @bot.command()
 @commands.check(admin)
 async def prefix(ctx, newprefix):
-    if len(newprefix) == 1 and newprefix not in "qwertyuiopasdfghjklzxcvbnm1234567890*_~`{<@\\/":
+    if len(newprefix) == 1 and newprefix in ":;~-+=.,!$&^?[]'%£":
         guilds[ctx.guild.id].prefix = newprefix
         write(ctx)
         await ctx.send("Prefix set to: "+newprefix)
     else:
-        await ctx.send("Invalid prefix! Unavaliable prefixes: ```qwertyuiopasdfghjklzxcvbnm1234567890*_~`{<@\\/```")
+        await ctx.send("Invalid prefix! Avaliable prefixes: `:;~-+=.,!$&^?[]'%£`")
 
 @bot.command()
 @commands.check(owner)
@@ -205,7 +199,7 @@ async def adminset(ctx, role):
 @commands.check(admin) 
 async def freq(ctx, flag, *args):
     if flag == "?":
-        await ctx.send(f"Chance to speak: 1/{guilds[ctx.guild.id].freq}\nChance to learn: 1/{guilds[ctx.guild.id].learn}")
+        await ctx.send(f"Chance to speak: `1/{guilds[ctx.guild.id].freq}`\nChance to learn: `1/{guilds[ctx.guild.id].learn}`")
         return
     try:
         freq = args[0]
@@ -223,11 +217,11 @@ async def freq(ctx, flag, *args):
     if flag == "s":
         guilds[ctx.guild.id].freq = freq
         write(ctx)
-        await ctx.send("Speaking frequency set to 1/"+str(freq))
+        await ctx.send(f"Speaking frequency set to `1/{freq}`")
     elif flag == "l":
         guilds[ctx.guild.id].learn = freq
         write(ctx)
-        await ctx.send("Learning frequency set to 1/"+str(freq))
+        await ctx.send(f"Learning frequency set to `1/{freq}`")
     else:
         await ctx.send("Unknown flag, flags are `s, l, ?`")
 
@@ -308,13 +302,8 @@ async def log(ctx, flag, *args):
 @bot.command()
 @commands.check(admin) 
 async def l(ctx, *args):
-    phrases = guilds[ctx.guild.id].phrases
-    flag = args[0]
-    args = list(args)
+    phrases, flag, args, cluster, clusters, keyword = guilds[ctx.guild.id].phrases, args[0], list(args), [], [], ""
     args.pop(0)
-    cluster = []
-    clusters = []
-    keyword = ""
     try:
         flag = int(flag)
         keyword = args[0]
