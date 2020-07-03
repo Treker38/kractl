@@ -100,7 +100,7 @@ async def on_message(message):
     if message.author == bot.user or message.guild == None:
         return
     content = message.content
-    if not content.startswith(tuple(":;~-+=.,!$&^?[]'%£")) or content.startswith((bot.user.mention, "".join(["<@!", str(bot.user.id), ">"]))): #ignores commands for every bot in a server, this isn't just brute-force
+    if content.startswith(tuple(":;~-+=.,!$&^?[]'%£")) or content.startswith((bot.user.mention, "".join(["<@!", str(bot.user.id), ">"]))): #ignores commands for every bot in a server, this isn't just brute-force
         if not content.startswith(guilds[message.guild.id].prefix+guilds[message.guild.id].prefix): #if the prefix is not called twice
             await bot.process_commands(message)
         return #don't want it to continue after running a command
