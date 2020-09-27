@@ -16,15 +16,15 @@ async def determine_prefix(bot, msg): #for some reason this just doesn't work un
 bot = commands.Bot(command_prefix=determine_prefix)
 bot.remove_command('help') #removes the prebuilt help command
 
-messages = ["God fucking damn it, {0}", "Fuck you, {0}", "Leave me alone, I swear to god. You're so fucking annoying and it pisses me off, {0}", "FUCK OFF! {0}", "Pleeease bother someone else oh my fucking god, {0}", "I hope you actually fucking die, {0}"]
+messages = ["Shut up, {0}", "Fuck you, {0}", "You've come to bother me again I see. {0}", "FUCK OFF {0}", "Do you really have nothing better to do? {0}", "Cant you see i'm busy here? {0}", "Isn't there like a billion other people you can talk to? {0}", "Can you do me a favor? Stop bothering me you fucking homonculus, {0}", "Go fall in an endless pit of despair, {0}"]
 guilds = {}
-dpfx = "-" #just so i can change the default prefix with ease
+dpfx = "^" #just so i can change the default prefix with ease
 
 class Server(object):
     def __init__(self, j):
         self.__dict__ = json.load(j)
 
-def createdefault(guild): #change default prefix to ^ as soon as possible
+def createdefault(guild):
     with open(str(guild.id)+".json", "w") as jfile:
         try:
             json.dump({"talk":True, "prefix":dpfx, "adminrole":guild.default_role.id, "freq":20, "whitelisted":[], "log":False, "lchannel":guild.system_channel.id, "listmax":80, "learn":10, "phrases":["Hi!"]}, jfile)
@@ -75,15 +75,13 @@ async def on_guild_join(guild):
     print(f"[{datetime.now().time()}] Joined server: '{guild.name}' and created files!")
     welcome = f"""Hi, i'm {bot.user.mention}, I am a chatterbot! Please use `-adminset` to set the admin role and `-prefix` to change my prefix! Additionally, you can mention me or use the prefix to start commands! Use {bot.user.mention} help or `-help` for more info.
         
-    **By inviting this bot to this server, everyone on the server is *opting in* for their message content to be kept indefinetly onto a text file. *Message content can be deleted by it reaching it's maximum phrase limit, or the bot being kicked or by a special command***
-    Read more about this here: https://github.com/kurpingspace2/kractl/wiki/EULA
+    This bot copies messages onto a text file, read more about about it here: https://github.com/kurpingspace2/kractl/wiki/EULA
         
-If you agree, that's great! Use the `-whitelist a #general` command to allow the bot to log some phrases and repeat them later on!"""
+To start, use the `-whitelist a #general` command to allow the bot to log some phrases and repeat them later on."""
     try:
         await guild.get_channel(guilds[guild.id].lchannel).send(welcome)
     except:
         await guild.owner.create_dm()
-        await guild.owner.dm_channel.send("I didn't have access to speak in the system channel, so please forward this to the general chat or annoucements!")
         await guild.owner.dm_channel.send(welcome)
 
 @bot.event
@@ -315,7 +313,7 @@ async def l(ctx, *args):
                 None
     for index, phrase in enumerate(phrases):
         previous = cluster.copy()
-        if keyword in phrase.lower():
+        if keyword.lower() in phrase.lower():
             cluster.append("{0}: ".format(index)+phrase+"\n")
         if len("```"+"".join(cluster)+"```") > 2000:
             clusters.append("```"+"".join(previous)+"```")
